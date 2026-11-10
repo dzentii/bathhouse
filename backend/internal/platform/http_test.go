@@ -68,3 +68,20 @@ func TestPublicErrorsDoNotExposeDatabaseText(t *testing.T) {
 	require.NotContains(t, w.Body.String(), "private-password")
 	require.NotContains(t, w.Body.String(), "postgres://")
 }
+
+func TestResourceConflictDetails(t *testing.T) {
+	w := httptest.NewRecorder()
+	err := &APIError{
+		Status:  http.StatusConflict,
+		Code:    "resource_unavailable",
+		Message: "Часть выбора недоступна; ни один ресурс не удержан",
+		Details: &ErrorDetails{ResourceIDs: []string{"seat-2", "seat-5"}},
+	}
+	Fail(w, err)
+	require.Equal(t, http.StatusConflict, w.Code)
+	require.JSONEq(t, `{"error":{"code":"resource_unavailable","message":"Часть выбора недоступна; ни один ресурс не удержан","details":{"resource_ids":["seat-2","seat-5"]}}}`, w.Body.String())
+
+	w = httptest.NewRecorder()
+	Fail(w, Conflict("version_conflict", "Версия изменена"))
+	require.JSONEq(t, `{"error":{"code":"version_conflict","message":"Версия изменена"}}`, w.Body.String())
+}

@@ -116,6 +116,11 @@ call('PATCH', f'/api/v1/orders/{oid}', '/api/v1/orders/{orderID}', body={'versio
 date = selection['starts_at'][:10]
 call('GET', f'/api/v1/departments/b1-male-general/availability-calendar?from={date}&to={date}', '/api/v1/departments/{departmentID}/availability-calendar')
 held = call('POST', f'/api/v1/orders/{oid}/hold', '/api/v1/orders/{orderID}/hold', body={}, token=token)
+conflicting = create(selection)
+conflict = call('POST', f'/api/v1/orders/{conflicting["order"]["id"]}/hold', '/api/v1/orders/{orderID}/hold', body={}, token=conflicting['order_token'], want=409)
+if conflict['error']['code'] != 'resource_unavailable' or conflict['error']['details']['resource_ids'] != selection['resource_ids']:
+    raise SystemExit('Hold conflict did not identify exactly the unavailable selected resources')
+call('POST', f'/api/v1/orders/{conflicting["order"]["id"]}/release', '/api/v1/orders/{orderID}/release', body={}, token=conflicting['order_token'])
 quote = held['order']['quote']
 attempt = call('POST', f'/api/v1/orders/{oid}/payments', '/api/v1/orders/{orderID}/payments', body={'amount_kopecks': quote['amount_kopecks'], 'currency': 'RUB', 'price_hash': quote['price_hash'], 'outcome': 'success'}, token=token, want=202)
 deadline = time.monotonic() + 30

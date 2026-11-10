@@ -301,6 +301,7 @@ func TestEndToEnd(t *testing.T) {
 		b = s.create(sel)
 		start := make(chan struct{})
 		results := make([]int, 2)
+		responses := make([][]byte, 2)
 		errs := make([]error, 2)
 		var wg sync.WaitGroup
 		for i, c := range []created{a, b} {
@@ -308,7 +309,7 @@ func TestEndToEnd(t *testing.T) {
 			go func(i int, c created) {
 				defer wg.Done()
 				<-start
-				results[i], _, errs[i] = s.raw("POST", "/api/v1/orders/"+c.Order.ID+"/hold", c.Token, "", map[string]any{})
+				results[i], responses[i], errs[i] = s.raw("POST", "/api/v1/orders/"+c.Order.ID+"/hold", c.Token, "", map[string]any{})
 			}(i, c)
 		}
 		close(start)
@@ -316,6 +317,11 @@ func TestEndToEnd(t *testing.T) {
 		require.NoError(t, errs[0])
 		require.NoError(t, errs[1])
 		require.ElementsMatch(t, []int{200, 409}, results)
+		for i, code := range results {
+			if code == 409 {
+				assertResourceConflict(t, responses[i], sel.ResourceIDs)
+			}
+		}
 		winner, loser := a, b
 		if results[1] == 200 {
 			winner, loser = b, a
@@ -342,7 +348,9 @@ func TestEndToEnd(t *testing.T) {
 		a := s.create(first)
 		s.hold(a)
 		b := s.create(sel)
-		s.call("POST", "/api/v1/orders/"+b.Order.ID+"/hold", b.Token, "", map[string]any{}, 409, nil)
+		var failure map[string]any
+		s.call("POST", "/api/v1/orders/"+b.Order.ID+"/hold", b.Token, "", map[string]any{}, 409, &failure)
+		assertResourceConflict(t, mustJSON(failure), first.ResourceIDs)
 		var count int
 		require.NoError(t, s.db.QueryRow(context.Background(), "SELECT count(*) FROM allocations WHERE order_id=$1", b.Order.ID).Scan(&count))
 		require.Zero(t, count)
@@ -438,7 +446,9 @@ func TestEndToEnd(t *testing.T) {
 		a := s.create(sel)
 		s.hold(a)
 		b := s.create(sel)
-		s.call("POST", "/api/v1/orders/"+b.Order.ID+"/hold", b.Token, "", map[string]any{}, 409, nil)
+		var failure map[string]any
+		s.call("POST", "/api/v1/orders/"+b.Order.ID+"/hold", b.Token, "", map[string]any{}, 409, &failure)
+		assertResourceConflict(t, mustJSON(failure), sel.ResourceIDs)
 		next := sel
 		next.StartsAt = sel.EndsAt
 		next.EndsAt = next.StartsAt.Add(time.Hour)
@@ -447,7 +457,8 @@ func TestEndToEnd(t *testing.T) {
 		if code == 201 {
 			var c created
 			require.NoError(t, json.Unmarshal(body, &c))
-			s.call("POST", "/api/v1/orders/"+c.Order.ID+"/hold", c.Token, "", map[string]any{}, 409, nil)
+			s.call("POST", "/api/v1/orders/"+c.Order.ID+"/hold", c.Token, "", map[string]any{}, 409, &failure)
+			assertResourceConflict(t, mustJSON(failure), sel.ResourceIDs)
 			s.release(c)
 		} else {
 			require.Equal(t, 409, code)

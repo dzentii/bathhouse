@@ -28,15 +28,23 @@ import (
 var Validate = validator.New(validator.WithRequiredStructEnabled())
 
 type APIError struct {
-	Status  int    `json:"-"`
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Status  int           `json:"-"`
+	Code    string        `json:"code"`
+	Message string        `json:"message"`
+	Details *ErrorDetails `json:"details,omitempty"`
 }
 
-func (e *APIError) Error() string            { return e.Code + ": " + e.Message }
-func Err(status int, code, msg string) error { return &APIError{status, code, msg} }
-func Conflict(code, msg string) error        { return Err(409, code, msg) }
-func Bad(msg string) error                   { return Err(400, "invalid_request", msg) }
+// ErrorDetails contains only public resource identifiers, never booking or buyer data.
+type ErrorDetails struct {
+	ResourceIDs []string `json:"resource_ids"`
+}
+
+func (e *APIError) Error() string { return e.Code + ": " + e.Message }
+func Err(status int, code, msg string) error {
+	return &APIError{Status: status, Code: code, Message: msg}
+}
+func Conflict(code, msg string) error { return Err(409, code, msg) }
+func Bad(msg string) error            { return Err(400, "invalid_request", msg) }
 
 func JSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -48,7 +56,7 @@ func Fail(w http.ResponseWriter, err error) {
 	if !errors.As(err, &a) {
 		// Database and remote errors may contain DSNs or buyer details. Never log their raw text.
 		slog.Error("request failed", "error_type", "internal")
-		a = &APIError{500, "internal_error", "Внутренняя ошибка сервера"}
+		a = &APIError{Status: 500, Code: "internal_error", Message: "Внутренняя ошибка сервера"}
 	}
 	JSON(w, a.Status, map[string]any{"error": a})
 }

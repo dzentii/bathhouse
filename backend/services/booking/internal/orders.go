@@ -249,11 +249,20 @@ func (s *Service) hold(w http.ResponseWriter, r *http.Request) {
 	for _, x := range states {
 		available[x.ID] = x.State == "free"
 	}
+	var unavailable []string
 	for _, id := range o.Selection.ResourceIDs {
 		if !available[id] {
-			platform.Fail(w, platform.Conflict("resource_unavailable", "Часть выбора недоступна; ни один ресурс не удержан"))
-			return
+			unavailable = append(unavailable, id)
 		}
+	}
+	if len(unavailable) > 0 {
+		platform.Fail(w, &platform.APIError{
+			Status:  http.StatusConflict,
+			Code:    "resource_unavailable",
+			Message: "Часть выбора недоступна; ни один ресурс не удержан",
+			Details: &platform.ErrorDetails{ResourceIDs: unavailable},
+		})
+		return
 	}
 	clientKey, e := s.reserveClientQuota(r, tx, len(o.Selection.ResourceIDs))
 	if e != nil {
