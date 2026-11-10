@@ -1,0 +1,85 @@
+<div class="stack head">
+  <h1 class="title">Личные данные</h1>
+  <span class="text-2 text-md">Подставляются в заказ автоматически — вводить их при каждой покупке не нужно.</span>
+</div>
+
+@if (profile.error(); as e) {
+  <app-load-error [message]="msg(e)" (retry)="profile.reload()" />
+} @else if ((profile.hasValue() ? profile.value() : undefined); as p) {
+  @if (saved()) {
+    <div role="status" class="saved"><app-icon name="check" [size]="20" [stroke]="2" />Изменения сохранены</div>
+  }
+
+  <form class="stack sections" (ngSubmit)="save()" novalidate>
+    <section class="card">
+      <h2 class="h2-card">Основное</h2>
+      <div class="row">
+        <div class="field">
+          <label for="fn">Имя</label>
+          <input id="fn" name="firstName" class="inp" type="text" autocomplete="given-name" maxlength="80" [(ngModel)]="form.firstName" (ngModelChange)="changed()"
+                 [class.invalid]="!!fieldError('firstName')" [attr.aria-invalid]="!!fieldError('firstName')" aria-describedby="fn-err">
+          @if (fieldError('firstName'); as m) { <span id="fn-err" class="field-error">{{ m }}</span> }
+        </div>
+        <div class="field">
+          <label for="ln">Фамилия <span class="optional">· необязательно</span></label>
+          <input id="ln" name="lastName" class="inp" type="text" autocomplete="family-name" maxlength="80" [(ngModel)]="form.lastName" (ngModelChange)="changed()">
+        </div>
+      </div>
+      <div class="row row-end">
+        <div class="field">
+          <label for="tel">Телефон</label>
+          <div class="tel-wrap">
+            <input id="tel" class="inp tel" type="tel" [value]="phone(p)" readonly aria-describedby="tel-hint">
+            @if (p.phoneVerified) { <span class="verified"><app-icon name="check" [size]="14" [stroke]="2.4" />Подтверждён</span> }
+          </div>
+          <span id="tel-hint" class="note">Номер — это ваш вход в кабинет. Смена номера через код из SMS — на согласовании.</span>
+        </div>
+        <div class="field">
+          <label for="em">Email <span class="optional">· необязательно</span></label>
+          <input id="em" name="email" class="inp" type="email" autocomplete="email" maxlength="120" [(ngModel)]="form.email" (ngModelChange)="changed()"
+                 [class.invalid]="!!fieldError('email')" [attr.aria-invalid]="!!fieldError('email')" aria-describedby="em-hint">
+          @if (fieldError('email'); as m) { <span class="field-error">{{ m }}</span> }
+          <span id="em-hint" class="note">Пришлём копию билета после оплаты.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 class="h2-card">Уведомления</h2>
+      <label class="chk"><input type="checkbox" name="smsReminder" [(ngModel)]="form.smsReminder" (ngModelChange)="changed()"><span>SMS-напоминание за день до посещения</span></label>
+      <label class="chk"><input type="checkbox" name="emailTicket" [(ngModel)]="form.emailTicket" (ngModelChange)="changed()"><span>Копия билета на email</span></label>
+      <label class="chk"><input type="checkbox" name="news" [(ngModel)]="form.news" (ngModelChange)="changed()"><span>Новости и специальные предложения бань</span></label>
+    </section>
+
+    <section class="card consent">
+      <h2 class="h2-card">Согласия</h2>
+      <label class="chk"><input type="checkbox" checked disabled><span>Согласие на обработку персональных данных · {{ consent(p) }}</span></label>
+      <span class="note">Текст согласия — на согласовании с заказчиком.</span>
+    </section>
+
+    @if (error(); as e) { @if (!e.field) { <app-notice kind="error">{{ e.message }}</app-notice> } }
+
+    <div class="actions-row">
+      <div class="actions">
+        <button class="btn btn-primary btn-act" type="submit" [disabled]="busy()">{{ busy() ? 'Сохраняем…' : 'Сохранить' }}</button>
+        <button class="btn btn-quiet btn-act" type="button" (click)="cancel()">Отменить</button>
+      </div>
+      @if (!confirmDelete()) {
+        <button type="button" class="danger" (click)="confirmDelete.set(true)">Удалить кабинет и данные</button>
+      }
+    </div>
+  </form>
+
+  @if (confirmDelete()) {
+    <app-notice kind="warn" title="Удалить кабинет?">
+      Профиль и вход по номеру будут удалены, это нельзя отменить. Оплаченные билеты по-прежнему откроются по своим ссылкам.
+      <div class="actions confirm">
+        <button class="btn btn-sm danger-btn" type="button" (click)="deleteAccount()" [disabled]="deleting()">{{ deleting() ? 'Удаляем…' : 'Да, удалить' }}</button>
+        <button class="btn btn-sm btn-quiet" type="button" (click)="confirmDelete.set(false)">Отмена</button>
+      </div>
+    </app-notice>
+  }
+  <span class="note">Состав данных, срок их хранения и порядок удаления — на согласовании с заказчиком.</span>
+} @else {
+  <span class="note">Загружаем данные…</span>
+}

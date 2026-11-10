@@ -1,0 +1,17 @@
+.state { max-width: 720px; background: var(--surface); border: 1px solid var(--line); padding: 40px; display: flex; flex-direction: column; gap: 18px; align-items: flex-start; }
+.state.success { border-color: var(--success-line); }
+.state.declined { border-color: var(--error-line); }
+.state.pending { border-color: var(--info-line); }
+@media (max-width: 600px) { .state { padding: 24px; } }
+.ttl { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 40px; line-height: 1.05; }
+.txt { margin: 0; font-size: 15px; line-height: 1.6; color: var(--text-2); max-width: 520px; }
+.ico { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.ico.spinner { border-width: 3px; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+
+.page { padding-top: 48px; }
+.ico-success { background: #e3f0e6; color: #2e7a44; }
+.ico-error { background: #fbe7e2; color: var(--error-accent); }
+.ico-neutral { background: #eceeeb; color: var(--text-2); }
+.disclaimer { margin-top: 20px; max-width: 640px; }

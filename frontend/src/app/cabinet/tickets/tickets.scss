@@ -1,0 +1,63 @@
+:host { display: flex; flex-direction: column; gap: 32px; }
+
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.title { margin: 0; font-family: var(--serif); font-weight: 600; font-size: clamp(40px, 5vw, 56px); line-height: 1; }
+.new { min-height: 48px; padding: 0 22px; }
+.h2 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 36px; line-height: 1; }
+.k { font-size: 12px; color: var(--muted); }
+.baseline { align-items: baseline; }
+.spread.center { align-items: center; }
+.small-badge { padding: 5px 10px; font-size: 12px; }
+
+.sections { display: flex; flex-direction: column; gap: 48px; }
+.block { display: flex; flex-direction: column; gap: 16px; }
+
+/* Сегодня */
+.today { background: #1b2a24; color: #f4efe3; display: flex; flex-wrap: wrap; border-radius: 4px; overflow: hidden; }
+.today-main { flex: 999 1 420px; padding: 32px; display: flex; flex-direction: column; gap: 18px; }
+.today-side { flex: 1 1 240px; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 14px; background: #24382f; }
+@media (max-width: 600px) { .today-main, .today-side { padding: 20px; } }
+.live { align-self: flex-start; display: inline-flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #1b2a24; background: #cfe6d5; padding: 6px 10px; }
+.live .dot { width: 8px; height: 8px; border-radius: 50%; background: #2e7a44; }
+.live.soon { background: #e9d7a8; }
+.live.soon .dot { background: #6e5310; }
+.today-name { font-family: var(--serif); font-weight: 600; font-size: clamp(28px, 4vw, 40px); line-height: 1.05; }
+.today-addr { font-size: 15px; color: #c9d3cc; }
+.today-facts { margin: 0; display: flex; gap: 16px 36px; flex-wrap: wrap; }
+.today-facts dt { font-size: 12px; color: #a9b8af; }
+.today-facts dd { margin: 4px 0 0; font-size: 17px; }
+.today-facts .b { font-weight: 600; }
+.today-order { font-size: 13px; color: #a9b8af; }
+.today-left { font-size: 15px; }
+.btn-light { background: var(--bg); color: #1b2a24; border-color: var(--bg); min-height: 48px; }
+.btn-light:hover { background: #fff; color: #1b2a24; }
+
+/* Предстоящие */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 16px; }
+.up { background: var(--surface); border: 1px solid var(--line); padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.up-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.up-when { font-size: 13px; font-weight: 600; color: var(--green); }
+.up-name { font-size: 19px; font-weight: 600; }
+.up-facts { display: flex; gap: 12px 24px; flex-wrap: wrap; font-size: 14px; color: var(--text-3); }
+.up-facts b { font-size: 16px; color: var(--text); }
+.up-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+
+/* История на телефоне — списком */
+.hist-list { display: none; margin: 0; padding: 0; list-style: none; }
+.hist-list a { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--text); }
+.hist-list b { font-size: 15px; font-weight: 600; }
+.hist-sum { display: flex; align-items: center; gap: 10px; font-size: 14px; white-space: nowrap; }
+
+/* Вкладки только на телефоне */
+.tabs { display: none; gap: 6px; padding: 4px; background: var(--line-soft); }
+.tab { flex: 1; min-height: 44px; font: 600 14px var(--sans); cursor: pointer; border-radius: 2px; background: transparent; color: var(--muted); border: 1px solid transparent; }
+.tab.on { background: var(--surface); color: var(--text); border-color: var(--line-strong); }
+@media (max-width: 700px) {
+  :host { gap: 18px; }
+  .tabs { display: flex; }
+  .sections { gap: 28px; }
+  .sections:not(.show-hist) .hist { display: none; }
+  .sections.show-hist .cur { display: none; }
+  .hist .table-wrap { display: none; }
+  .hist-list { display: block; }
+}

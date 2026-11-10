@@ -1,0 +1,124 @@
+<app-site-header [step]="2" />
+<main class="container page-main">
+  @if (draft(); as d) {
+    <h1 class="h1-sm">Оформление заказа</h1>
+    <p class="text-2 subtitle">Регистрация и SMS-подтверждение не нужны.</p>
+
+    <div class="split mt-32">
+      <form class="main" (ngSubmit)="submit()" novalidate id="order-form">
+        <section class="card">
+          <div class="spread">
+            <h2 class="h2-card">Посещение</h2>
+            <a [routerLink]="backLink()" class="text-sm">Изменить выбор</a>
+          </div>
+          <dl class="dl-grid">
+            <div><dt>Баня и отделение</dt><dd>{{ deptName() }}</dd></div>
+            <div><dt>Дата</dt><dd>{{ long(d.selection.date) }}</dd></div>
+            <div><dt>{{ d.selection.kind === 'session' ? 'Сеанс' : 'Время' }}</dt><dd>{{ d.selection.start }}–{{ d.selection.end }}</dd></div>
+            <div><dt>{{ d.selection.kind === 'session' ? 'Места' : 'Помещение' }}</dt><dd>{{ resources() }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="card" [class.has-error]="fieldError('guests')">
+          <h2 class="h2-card">Гости</h2>
+          <div class="guest-row">
+            <div><strong>Взрослые</strong><small>{{ d.selection.kind === 'session' ? 'Каждому — отдельное место' : 'Нужен хотя бы один взрослый' }}</small></div>
+            <div class="counter">
+              <button class="cnt" type="button" (click)="setAdults(d.guests.adults - 1)" [disabled]="d.guests.adults <= 1" aria-label="Меньше взрослых">−</button>
+              <output aria-live="polite">{{ d.guests.adults }}</output>
+              <button class="cnt" type="button" (click)="setAdults(d.guests.adults + 1)" [disabled]="adultsAtMax()" aria-label="Больше взрослых">+</button>
+            </div>
+          </div>
+
+          @for (age of d.guests.children; track $index; let i = $index) {
+            <div class="guest-row child-row">
+              <label [for]="'child-' + i"><strong>Ребёнок {{ i + 1 }}</strong><small>Возраст на дату посещения</small></label>
+              <div class="cluster">
+                <select class="inp age" [id]="'child-' + i" [ngModel]="age" (ngModelChange)="setChildAge(i, $event)" [ngModelOptions]="{ standalone: true }"
+                        [class.invalid]="showErrors() && age == null" [attr.aria-invalid]="showErrors() && age == null">
+                  <option [ngValue]="null" disabled>Возраст</option>
+                  @for (a of ages; track a) { <option [ngValue]="a">{{ ageLabel(a) }}</option> }
+                </select>
+                <button class="btn btn-quiet btn-sm" type="button" (click)="removeChild(i)" [attr.aria-label]="'Убрать ребёнка ' + (i + 1)">Убрать</button>
+              </div>
+            </div>
+          }
+          <div>
+            <button class="link-btn text-sm" type="button" (click)="addChild()" [disabled]="childrenAtMax()">+ Добавить ребёнка</button>
+          </div>
+          @if (showErrors() && missingAges()) { <span class="field-error">Укажите возраст каждого ребёнка — от него зависят тариф и место.</span> }
+          @if (fieldError('guests'); as m) { <span class="field-error">{{ m }}</span> }
+          <span class="note">
+            @if (d.selection.kind === 'session') {
+              Выбрано мест: {{ seatCount() }}. Место нужно каждому взрослому; нужно ли место ребёнку и какой тариф применить, определяет возраст — проверим при расчёте.
+            } @else {
+              Возраст детей влияет на число гостей в тарифе. Имена гостей не нужны.
+            }
+          </span>
+        </section>
+
+        <section class="card">
+          <h2 class="h2-card">Покупатель</h2>
+          <div class="fields">
+            <div class="field">
+              <label for="name">Имя</label>
+              <input id="name" name="name" class="inp" type="text" autocomplete="given-name" maxlength="80" required
+                     [ngModel]="d.buyer.name" (ngModelChange)="setBuyer({ name: $event })"
+                     [class.invalid]="showErrors() && nameError()" [attr.aria-invalid]="showErrors() && !!nameError()" aria-describedby="name-err">
+              @if (showErrors() && nameError(); as m) { <span id="name-err" class="field-error">{{ m }}</span> }
+            </div>
+            <div class="field">
+              <label for="phone">Телефон</label>
+              <input id="phone" name="phone" class="inp" type="tel" autocomplete="tel" placeholder="+7 900 000-00-00" required
+                     [ngModel]="d.buyer.phone" (ngModelChange)="setBuyer({ phone: $event })" (blur)="setBuyer({ phone: normalize(d.buyer.phone) })"
+                     [class.invalid]="showErrors() && phoneError()" [attr.aria-invalid]="showErrors() && !!phoneError()" aria-describedby="phone-err">
+              @if (showErrors() && phoneError(); as m) { <span id="phone-err" class="field-error">{{ m }}</span> }
+            </div>
+          </div>
+          <span class="note">Телефон нужен для связи по заказу. Он не открывает доступ к билету.</span>
+          @if (!api.supportsCabinet) {
+          } @else if (customer.isLoggedIn()) {
+            <span class="note">Билет появится в личном кабинете.</span>
+          } @else {
+            <span class="note">Есть личный кабинет? <a [routerLink]="['/cabinet/login']" [queryParams]="{ returnUrl: '/order' }">Войдите</a> — имя и телефон подставятся, а билет сохранится в кабинете. Покупать без входа тоже можно.</span>
+          }
+        </section>
+      </form>
+
+      <aside aria-label="Итог заказа" class="card side sticky summary">
+        <h2 class="h2-card">Итог</h2>
+        @if (q(); as q) {
+          <div class="quote-lines">
+            @for (l of q.lines; track $index) { <div class="sum-row"><span>{{ l.label }}</span><span>{{ l.amount === 0 ? 'бесплатно' : (l.amount | money) }}</span></div> }
+          </div>
+        } @else if (quote.isLoading()) {
+          <span class="note">Считаем стоимость…</span>
+        }
+        @if (quote.error(); as e) { <app-notice kind="warn">{{ msg(e) }}</app-notice> }
+        <div class="total-row">
+          <span class="text-2 text-sm">Полная стоимость, предварительно</span>
+          <span class="price">{{ q()?.total | money }}</span>
+        </div>
+        @if (error(); as e) {
+          <app-notice [kind]="e.code === 'network' ? 'empty' : 'error'" [title]="e.code === 'conflict' ? 'Выбор недоступен' : ''">{{ e.message }}</app-notice>
+        }
+        <button class="btn btn-primary" type="submit" form="order-form" [disabled]="busy() || !q() || quote.isLoading()">
+          {{ busy() ? 'Проверяем выбор…' : 'Перейти к оплате' }} @if (!busy()) { <span aria-hidden="true">→</span> }
+        </button>
+        <ul class="note hints">
+          @if (d.selection.kind === 'session') {
+            <li>Проверим все места разом и удержим их на 10 минут.</li>
+            <li>Если хотя бы одно место заняли — ничего не удерживаем и предложим выбрать заново.</li>
+          } @else {
+            <li>Проверим интервал и удержим сауну целиком на 10 минут.</li>
+          }
+          <li>Сумма может уточниться — покажем её до оплаты.</li>
+        </ul>
+      </aside>
+    </div>
+  } @else {
+    <h1 class="h1-sm">Оформление заказа</h1>
+    <app-notice class="empty" kind="empty" title="Выбор не найден">Сначала выберите баню, отделение и время. <a routerLink="/">На главную</a></app-notice>
+  }
+</main>
+

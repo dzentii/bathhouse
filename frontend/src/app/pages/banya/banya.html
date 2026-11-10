@@ -1,0 +1,73 @@
+<app-site-header [activeBanya]="banyaId()" />
+<main class="container page">
+  @if (data.error(); as e) {
+    <app-load-error [message]="msg(e)" (retry)="data.reload()" />
+  }
+  @if ((data.hasValue() ? data.value() : undefined); as d) {
+    <nav aria-label="Хлебные крошки" class="breadcrumbs">
+      <a routerLink="/">Главная</a><span aria-hidden="true">/</span><span class="current">{{ d.banya.name }}</span>
+    </nav>
+
+    <section class="intro">
+      <div class="intro-text">
+        <h1 class="h1">{{ d.banya.name }}</h1>
+        <div class="addr"><app-icon name="pin" class="accent" /> {{ d.banya.address }}</div>
+        <p class="intro-desc">{{ d.banya.description }} Ниже — все действующие отделения, сгруппированные по способу посещения.</p>
+      </div>
+      @if (other(); as ob) { <a class="btn btn-ghost" [routerLink]="['/banya', ob.id]">Перейти в {{ otherName() }} <span aria-hidden="true">→</span></a> }
+    </section>
+
+    <nav aria-label="Группы отделений" class="jump">
+      @for (g of groups(); track g.id) {
+        <a [routerLink]="[]" [fragment]="g.id">{{ g.title }} <span class="accent">· {{ g.items.length }}</span></a>
+      }
+    </nav>
+
+    @for (g of groups(); track g.id) {
+      <section [id]="g.id" class="group">
+        <div class="stack group-head">
+          <h2 class="h2">{{ g.title }}</h2>
+          <span class="text-2 text-md">{{ g.text }}</span>
+        </div>
+        @if (g.mode === 'info') {
+          @for (x of g.items; track x.id) {
+            <article class="info-card">
+              <div class="ph info-photo">Фото отделения</div>
+              <div class="info-body">
+                <h3 class="h3">{{ x.name }}</h3>
+                <span class="text-2 info-desc">{{ x.description }}</span>
+                <span class="onsite">Покупка на месте</span>
+              </div>
+              <a class="btn btn-ghost" [routerLink]="['/banya', d.banya.id, x.id]">Порядок посещения</a>
+            </article>
+          }
+        } @else {
+          <div class="cards" [class.wide]="g.mode === 'sauna'">
+            @for (x of g.items; track x.id) {
+              <article class="dcard">
+                <div class="ph ph-cover dphoto">Фото {{ g.mode === 'sauna' ? 'сауны' : 'отделения' }}</div>
+                <div class="dbody">
+                  <h3 class="h3">{{ x.name }}</h3>
+                  <div class="cluster tags">
+                    @for (t of x.tags; track t) { <span class="tag">{{ t }}</span> }
+                    @if (g.mode === 'sauna') {
+                      <span class="tag">В цене до {{ x.baseGuests ?? '[уточняется]' }} гостей</span>
+                      <span class="tag">Макс. {{ x.maxGuests ?? '[уточняется]' }}</span>
+                    }
+                  </div>
+                  @if (x.priceFrom != null) {
+                    <span class="text-2 text-sm">от <strong class="strong">{{ x.priceFrom | money }}</strong> {{ g.mode === 'sauna' ? 'в час' : 'за место' }}</span>
+                  }
+                  <a class="btn btn-primary card-cta" [routerLink]="['/banya', d.banya.id, x.id]">{{ g.mode === 'sauna' ? 'Выбрать время' : 'Выбрать сеанс' }}</a>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </section>
+    }
+  } @else if (data.isLoading()) {
+    <div class="ph loading">Загрузка отделений…</div>
+  }
+</main>
+<app-site-footer />

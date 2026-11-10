@@ -1,0 +1,28 @@
+:host { display: flex; flex-direction: column; gap: 24px; }
+
+.head { gap: 8px; }
+.title { margin: 0; font-family: var(--serif); font-weight: 600; font-size: clamp(40px, 5vw, 56px); line-height: 1; }
+.sections { gap: 24px; }
+
+.saved { display: flex; gap: 12px; align-items: center; padding: 14px 18px; border: 1px solid var(--success-line); background: var(--success-bg); color: var(--success-text); font-size: 15px; }
+
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.row-end { align-items: flex-start; }
+.inp { background: var(--surface); }
+.optional { font-weight: 400; color: var(--muted); }
+
+.tel-wrap { position: relative; }
+.tel { background: var(--bg); padding-right: 140px; }
+.verified { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 600; color: #1f5a33; }
+
+.chk { display: flex; gap: 14px; align-items: flex-start; font-size: 15px; line-height: 1.5; cursor: pointer; min-height: 44px; }
+.chk input { width: 22px; height: 22px; margin: 0; flex: none; accent-color: var(--green); }
+.consent { gap: 12px; }
+
+.actions-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.btn-act { min-height: 48px; }
+.danger { background: none; border: 0; padding: 0 4px; min-height: 44px; color: #9a3220; font: 500 14px var(--sans); cursor: pointer; }
+.danger:hover { text-decoration: underline; }
+.confirm { margin-top: 12px; }
+.danger-btn { background: #9a3220; border-color: #9a3220; color: #fff; }
+.danger-btn:hover:not(:disabled) { background: #7a2516; color: #fff; }

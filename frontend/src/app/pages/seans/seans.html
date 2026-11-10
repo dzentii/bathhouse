@@ -1,0 +1,130 @@
+<app-site-header [step]="1" />
+<main class="container page-main">
+  <a class="back-link" [routerLink]="['/banya', banyaId(), departmentId()]"><span aria-hidden="true">←</span> К отделению</a>
+  @if ((dept.hasValue() ? dept.value() : undefined); as v) {
+    <div class="page-title">
+      <h1 class="h1-sm">{{ v.department.name }}</h1>
+      <span class="text-2">{{ v.banya.name }} · {{ v.banya.shortAddress }} · время — екатеринбургское</span>
+    </div>
+  }
+  @if (dept.error(); as e) { <app-load-error class="mt-16" [message]="msg(e)" (retry)="dept.reload()" /> }
+
+  @if (flash(); as f) { <app-notice class="mt-24" kind="error" title="Выбор нужно изменить">{{ f }}</app-notice> }
+
+  <section aria-label="Дата" class="block">
+    <span class="label-caps">Дата · продажа на 7 дней вперёд</span>
+    @if (dates.error()) { <app-load-error (retry)="dates.reload()" /> }
+    <div class="cluster">
+      @for (d of (dates.hasValue() ? dates.value() : undefined) ?? []; track d.date) {
+        <button class="chip" type="button" [class.on]="d.date === date()" [disabled]="!d.hasSessions"
+                [attr.aria-pressed]="d.date === date()" (click)="pickDate(d.date)">
+          <span class="chip-small">{{ wd(d.date) }}{{ d.hasSessions ? '' : ' · нет сеансов' }}</span>
+          <span class="chip-big">{{ dm(d.date) }}</span>
+        </button>
+      }
+    </div>
+  </section>
+
+  <section aria-label="Сеанс" class="block block-tight">
+    <span class="label-caps">Сеанс</span>
+    @if (sessions.isLoading()) { <span class="note">Загружаем сеансы…</span> }
+    @if (sessions.error()) { <app-load-error (retry)="sessions.reload()" /> }
+    @if ((sessions.hasValue() ? sessions.value() : undefined); as list) {
+      @if (!list.length) {
+        <app-notice kind="empty" title="Нет сеансов на эту дату">Выберите другую дату{{ nextDateHint() }}.</app-notice>
+      }
+      <div class="cluster">
+        @for (s of list; track s.id) {
+          <button class="chip" type="button" [class.on]="s.id === sessionId()" [disabled]="s.free === 0"
+                  [attr.aria-pressed]="s.id === sessionId()" (click)="pickSession(s.id)">
+            <span class="chip-time">{{ s.start }}–{{ s.end }}</span>
+            <span class="chip-small chip-free">{{ s.free ? s.free + ' свободно' : 'мест нет' }}</span>
+          </button>
+        }
+      </div>
+    }
+  </section>
+
+  <div class="split mt-32">
+    <section aria-label="Схема зала" class="card main scheme">
+      <div class="scheme-head">
+        <h2 class="scheme-title">Схема зала{{ (avail.hasValue() ? avail.value() : undefined) ? ' · версия ' + (avail.hasValue() ? avail.value() : undefined)!.scheme.version : '' }}</h2>
+        <div class="legend">
+          <span><span class="lg lg-free"></span>Свободно</span>
+          <span><span class="lg lg-picked"></span>Выбрано</span>
+          <span><span class="lg lg-occupied"></span>Занято</span>
+          <span><span class="lg lg-blocked"></span>Закрыто</span>
+        </div>
+      </div>
+      @if (!sessionId()) {
+        <app-notice kind="empty">Выберите дату и сеанс — здесь появится схема с доступными местами.</app-notice>
+      } @else if (avail.error()) {
+        <app-load-error (retry)="avail.reload()" />
+      } @else if ((avail.hasValue() ? avail.value() : undefined); as a) {
+        @if (lostSeats().length && !flash()) {
+          <app-notice kind="error" title="Место уже заняли">
+            {{ lostSeats().length > 1 ? 'Места' : 'Место' }} {{ lostSeats().join(', ') }} стало недоступно и убрано из выбора. Ничего не удержано — выберите другое.
+          </app-notice>
+        }
+        @if (plan(); as pl) {
+          <div class="plan-wrap">
+            <div class="plan" [style.aspect-ratio]="pl.ratio">
+              @for (p of pl.seats; track p.label) {
+                @let st = a.seats[p.label];
+                <button type="button" class="seat plan-seat" [style.left.%]="p.left" [style.top.%]="p.top" [class.conflict]="conflictSeats().includes(p.label)"
+                        [class.on]="picked().includes(p.label)" [class.occupied]="st === 'occupied'" [class.blocked]="st === 'blocked'"
+                        [disabled]="st !== 'free'" [attr.aria-pressed]="picked().includes(p.label)"
+                        [attr.aria-label]="'Место ' + p.label + ', ' + seatWord(st, picked().includes(p.label))" (click)="toggle(p.label)">{{ p.label }}</button>
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="divider">Парная</div>
+        }
+        @for (z of a.scheme.zones; track z.name) {
+          <div class="zone" [class.zone-fallback]="plan()">
+            <span class="muted note">{{ z.name }}</span>
+            <div class="cluster">
+              @for (s of z.seats; track s) {
+                @let st = a.seats[s];
+                <button type="button" class="seat" [class.conflict]="conflictSeats().includes(s)" [class.on]="picked().includes(s)" [class.occupied]="st === 'occupied'" [class.blocked]="st === 'blocked'"
+                        [disabled]="st !== 'free'" [attr.aria-pressed]="picked().includes(s)"
+                        [attr.aria-label]="'Место ' + s + ', ' + seatWord(st, picked().includes(s))" (click)="toggle(s)">{{ s }}</button>
+              }
+            </div>
+          </div>
+        }
+        @if (!plan()) { <div class="divider">Вход · раздевалка</div> }
+        <span class="note">Номера — по проверенной схеме зала; пропуски в нумерации сохраняются.</span>
+        <div><button type="button" class="link-btn text-sm" (click)="avail.reload()">Обновить доступность</button></div>
+      } @else {
+        <span class="note">Загружаем схему…</span>
+      }
+    </section>
+
+    <aside aria-label="Ваш выбор" class="card side sticky">
+      <h2 class="price-lg">Ваш выбор</h2>
+      <div class="when">
+        <span>{{ date() ? long(date()!) : 'Дата не выбрана' }}</span>
+        <span class="when-time">{{ session() ? session()!.start + '–' + session()!.end : 'Сеанс не выбран' }}</span>
+        <span class="muted note">Окончание фиксировано, при опоздании не сдвигается</span>
+      </div>
+      @if (picked().length) {
+        <div class="cluster">
+          @for (p of sortedPicked(); track p) {
+            <button type="button" class="pick" (click)="toggle(p)" [attr.aria-label]="'Убрать место ' + p">Место {{ p }} <span aria-hidden="true" class="muted">✕</span></button>
+          }
+        </div>
+      } @else {
+        <span class="muted text-sm">Отметьте одно или несколько свободных мест на схеме.</span>
+      }
+      <div class="spread">
+        <span class="text-2 text-sm">{{ picked().length }} {{ seatsWord() }} · предварительно</span>
+        <span class="price-lg">{{ picked().length ? (q()?.total | money) : '—' }}</span>
+      </div>
+      @if (picked().length && quote.error(); as e) { <app-notice kind="warn">{{ msg(e) }}</app-notice> }
+      <button class="btn btn-primary" type="button" [disabled]="!picked().length" (click)="continue()">Продолжить оформление <span aria-hidden="true">→</span></button>
+      <span class="note">Места пока не закреплены за вами. Мы проверим их и удержим на 10 минут при переходе к оплате.</span>
+    </aside>
+  </div>
+</main>

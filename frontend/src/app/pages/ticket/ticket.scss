@@ -1,0 +1,30 @@
+.wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 80px; display: flex; flex-direction: column; gap: 24px; }
+@media (max-width: 600px) { .wrap { padding: 24px 12px 48px; } }
+.ticket { background: #fff; color: #1b1a15; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); box-shadow: 0 4px 20px rgba(31, 42, 37, .06); }
+.band { background: #1b2a24; color: #e9d7a8; padding: 12px 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 13px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.paper { padding: 40px 44px; display: flex; flex-direction: column; gap: 28px; }
+@media (max-width: 600px) { .paper { padding: 24px 20px; } }
+.head, .foot { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+.foot { align-items: flex-end; }
+.right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+@media (max-width: 600px) { .right { align-items: flex-start; } }
+.cut { border-top: 2px dashed #cdbf9e; }
+.grid { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px 32px; }
+.k { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #7a6a45; }
+.v { margin: 6px 0 0; font-size: 17px; color: #1b1a15; }
+.hint { font-size: 12px; color: #6b6556; }
+.paid { display: inline-flex; gap: 8px; align-items: center; font-size: 16px; font-weight: 600; color: #2e5c38; }
+.disclaimer { margin: 0; padding: 12px 14px; background: #f6f1e4; font-size: 13px; line-height: 1.5; color: #5e4d24; }
+.invalid { border: 1px dashed var(--line-quiet); padding: 28px; display: flex; flex-direction: column; gap: 10px; }
+@media print { .no-print { display: none !important; } .ticket { box-shadow: none; } }
+
+
+.brand { gap: 8px; }
+.brand-name { font-size: 22px; color: #6b5a33; }
+.dept { margin: 0; font-weight: 700; font-size: clamp(34px, 5vw, 48px); line-height: 1; }
+.address { font-size: 16px; color: #4a473e; }
+.order-id { font-size: 22px; font-weight: 600; letter-spacing: .04em; }
+.v-lg { font-size: 24px; font-weight: 600; }
+.total { font-weight: 700; font-size: 44px; line-height: 1; }
+.about { display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.6; }
+.invalid-title { font-size: 18px; font-weight: 600; }

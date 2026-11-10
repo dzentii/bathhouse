@@ -1,0 +1,73 @@
+<h1 class="admin-h1">Блокировки ресурсов</h1>
+<div class="filters">
+  <label class="fl">Баня
+    <select class="sel" [ngModel]="banyaId()" (ngModelChange)="banyaId.set($event)">
+      @for (c of (catalog.hasValue() ? catalog.value() : undefined) ?? []; track c.banya.id) { <option [value]="c.banya.id">{{ c.banya.name }}</option> }
+    </select>
+  </label>
+  <label class="fl">Отделение
+    <select class="sel" [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event)">
+      @for (d of departments(); track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+    </select>
+  </label>
+  <label class="fl">Дата
+    <select class="sel" [ngModel]="date()" (ngModelChange)="date.set($event)">
+      @for (d of (dates.hasValue() ? dates.value() : undefined) ?? []; track d.date) { <option [value]="d.date">{{ label(d.date) }}{{ d.hasSessions ? '' : ' · нет сеансов' }}</option> }
+    </select>
+  </label>
+  <label class="fl">Сеанс
+    <select class="sel" [ngModel]="sessionId()" (ngModelChange)="sessionId.set($event)">
+      @for (s of (sessions.hasValue() ? sessions.value() : undefined) ?? []; track s.id) { <option [value]="s.id">{{ s.start }}–{{ s.end }}</option> }
+    </select>
+  </label>
+</div>
+<span class="note">Сауны блокируются целиком — этот сценарий будет добавлен после согласования формы.</span>
+
+<div class="admin-row">
+  <section class="card admin pane-main">
+    <div class="spread">
+      <h2 class="ct">Готовая схема{{ (seats.hasValue() ? seats.value() : undefined) ? ' · ' + (seats.hasValue() ? seats.value() : undefined)!.scheme.version : '' }} · геометрия не редактируется</h2>
+      <div class="legend legend-sm">
+        <span><span class="lg sw sw-free"></span>Свободно</span>
+        <span><span class="lg sw sw-sold"></span>Продано / удержано</span>
+        <span><span class="lg sw sw-blocked"></span>Заблокировано</span>
+        <span><span class="lg sw sw-picked"></span>Выбрано для действия</span>
+      </div>
+    </div>
+    @if (!sessionId()) {
+      <app-notice kind="empty">Нет сеансов на выбранную дату.</app-notice>
+    } @else if (seats.error(); as e) {
+      <app-load-error [message]="err(e)" (retry)="seats.reload()" />
+    } @else if ((seats.hasValue() ? seats.value() : undefined); as v) {
+      @for (z of v.scheme.zones; track z.name) {
+        <div class="stack zone">
+          <span class="muted note">{{ z.name }}</span>
+          <div class="cluster">
+            @for (s of z.seats; track s.label) {
+              <button type="button" class="aseat" [class]="'aseat ' + s.state" [class.on]="picked().includes(s.label)"
+                      [attr.aria-pressed]="picked().includes(s.label)" [attr.aria-label]="aria(s)" [title]="s.orderId ? 'Заказ ' + s.orderId : ''"
+                      (click)="toggle(s.label)">{{ s.label }}</button>
+            }
+          </div>
+        </div>
+      }
+    }
+  </section>
+
+  <section class="card admin pane-side">
+    <h2 class="ct">Действие</h2>
+    <span class="picked-text">
+      Выбрано: <strong>{{ picked().length ? 'места ' + sorted().join(', ') : 'ничего' }}</strong><br>
+      @if (date() && session()) { {{ long(date()) }} · {{ session()!.start }}–{{ session()!.end }} }
+    </span>
+    <label class="fl">Причина (для журнала)<input class="sel" type="text" [(ngModel)]="reason" placeholder="Например, ремонт лавки"></label>
+    @if (error(); as m) { <app-notice kind="error">{{ m }}</app-notice> }
+    @if (done(); as m) { <app-notice kind="success">{{ m }}</app-notice> }
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" type="button" (click)="apply(true)" [disabled]="busy() || !picked().length">Заблокировать</button>
+      <button class="btn btn-quiet btn-sm" type="button" (click)="apply(false)" [disabled]="busy() || !picked().length">Снять блокировку</button>
+    </div>
+    <span class="note">Изменение не применяется частично. Закрытие отделения целиком и порядок разрешения конфликтов — на согласовании.</span>
+  </section>
+</div>
+

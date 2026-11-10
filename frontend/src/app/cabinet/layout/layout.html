@@ -1,0 +1,11 @@
+<app-site-header />
+<div class="container body">
+  <nav aria-label="Разделы кабинета" class="side">
+    <span class="side-title">Кабинет</span>
+    <a class="nav" routerLink="/cabinet" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" ariaCurrentWhenActive="page">Мои билеты</a>
+    <a class="nav" routerLink="/cabinet/profile" routerLinkActive="active" ariaCurrentWhenActive="page">Личные данные</a>
+    <button type="button" class="nav nav-out" (click)="auth.logout()">Выйти</button>
+  </nav>
+  <main class="content"><router-outlet /></main>
+</div>
+<app-site-footer />

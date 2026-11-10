@@ -1,0 +1,131 @@
+<div class="head">
+  <h1 class="title">Мои билеты</h1>
+  <a class="btn btn-quiet new" routerLink="/">+ Новая запись</a>
+</div>
+
+<!-- На телефоне — вкладки, на компьютере видны все разделы сразу -->
+<div role="tablist" class="tabs" aria-label="Билеты">
+  <button class="tab" type="button" role="tab" [class.on]="tab() === 'cur'" [attr.aria-selected]="tab() === 'cur'" (click)="tab.set('cur')">Текущие · {{ currentCount() }}</button>
+  <button class="tab" type="button" role="tab" [class.on]="tab() === 'hist'" [attr.aria-selected]="tab() === 'hist'" (click)="tab.set('hist')">История · {{ history().length }}</button>
+</div>
+
+@if (orders.error(); as e) {
+  <app-load-error [message]="msg(e)" (retry)="orders.reload()" />
+} @else if (orders.isLoading() && !(orders.hasValue() ? orders.value() : undefined)) {
+  <span class="note">Загружаем билеты…</span>
+} @else {
+  <div class="sections" [class.show-hist]="tab() === 'hist'">
+    @if (!currentCount() && !history().length) {
+      <app-notice kind="empty" title="Пока нет билетов">
+        Здесь появятся оплаченные заказы — оформленные из кабинета и на ваш номер телефона. <a routerLink="/">Выбрать баню</a>
+      </app-notice>
+    }
+
+    @if (todayList().length) {
+      <section aria-labelledby="now" class="block cur">
+        <h2 id="now" class="h2">Сегодня</h2>
+        @for (o of todayList(); track o.id) {
+          <article class="today">
+            <div class="today-main">
+              <span class="live" [class.soon]="!isActive(o)"><span class="dot" aria-hidden="true"></span>{{ isActive(o) ? 'Активный · ' + (o.selection.kind === 'session' ? 'сеанс идёт' : 'аренда идёт') : 'Сегодня' }}</span>
+              <div class="stack stack-sm">
+                <span class="today-name">{{ o.department.name }}</span>
+                <span class="today-addr">{{ o.banya.name }} · {{ o.banya.shortAddress }}</span>
+              </div>
+              <dl class="today-facts">
+                <div><dt>Дата</dt><dd>{{ dateShort(o.selection.date) }}</dd></div>
+                <div><dt>Время</dt><dd class="b">{{ o.selection.start }} – {{ o.selection.end }}</dd></div>
+                <div><dt>{{ o.selection.kind === 'session' ? 'Места' : 'Аренда' }}</dt><dd class="b">{{ seatsOnly(o) }}</dd></div>
+                <div><dt>Гости</dt><dd>{{ guestsShort(o) }}</dd></div>
+              </dl>
+            </div>
+            <div class="today-side">
+              <span class="today-order">Заказ {{ o.id }}</span>
+              <span class="today-left">{{ timeNote(o) }}</span>
+              <a class="btn btn-light" [routerLink]="['/ticket', o.ticketToken]">Открыть билет <span aria-hidden="true">→</span></a>
+            </div>
+          </article>
+        }
+      </section>
+    }
+
+    @if (upcoming().length) {
+      <section aria-labelledby="next" class="block cur">
+        <div class="cluster cluster-lg baseline"><h2 id="next" class="h2">Предстоящие</h2><span class="k">{{ upcoming().length }} {{ upcoming().length === 1 ? 'посещение' : 'посещения' }}</span></div>
+        <div class="cards">
+          @for (o of upcoming(); track o.id) {
+            <article class="up">
+              <div class="up-head">
+                <div class="stack stack-xs">
+                  <span class="up-when">{{ whenLabel(o) }}</span>
+                  <strong class="up-name">{{ o.department.name }}</strong>
+                  <span class="text-2 text-sm">{{ o.banya.name }}</span>
+                </div>
+                <span class="badge badge-confirmed small-badge">Оплачен</span>
+              </div>
+              <div class="up-facts">
+                <span><span class="k">Время</span><br><b>{{ o.selection.start }} – {{ o.selection.end }}</b></span>
+                <span><span class="k">{{ o.selection.kind === 'session' ? 'Места' : 'Аренда' }}</span><br>{{ seatsOnly(o) }}</span>
+                <span><span class="k">Гости</span><br>{{ guestsCount(o) }}</span>
+              </div>
+              <div class="up-foot">
+                <span class="k">{{ o.id }} · {{ o.quote.total | money }}</span>
+                <a class="btn btn-primary btn-sm" [routerLink]="['/ticket', o.ticketToken]">Открыть билет</a>
+              </div>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (history().length) {
+      <section aria-labelledby="hist" class="block hist">
+        <div class="spread center">
+          <h2 id="hist" class="h2">История покупок</h2>
+          <div class="cluster" role="group" aria-label="Фильтр по бане">
+            @for (f of filters; track f.key) {
+              <button class="ftab" type="button" [class.on]="banyaFilter() === f.key" [attr.aria-pressed]="banyaFilter() === f.key" (click)="banyaFilter.set(f.key)">{{ f.label }}</button>
+            }
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table compact">
+            <thead><tr><th>Дата и время</th><th>Баня · отделение</th><th>Места / аренда</th><th>Гости</th><th>Сумма</th><th>Статус</th><th><span class="visually-hidden">Билет</span></th></tr></thead>
+            <tbody>
+              @for (o of historyFiltered(); track o.id) {
+                <tr>
+                  <td><b class="strong">{{ dateFull(o.selection.date) }}</b><br><span class="k">{{ o.selection.start }}–{{ o.selection.end }}</span></td>
+                  <td>{{ o.banya.name }} · {{ o.department.name }}</td>
+                  <td>{{ resources(o) }}</td>
+                  <td>{{ guestsShort(o) }}</td>
+                  <td>{{ o.quote.total | money }}</td>
+                  <td><span class="badge badge-expired small-badge">Завершён</span></td>
+                  <td><a [routerLink]="['/ticket', o.ticketToken]" class="text-sm">Билет <span aria-hidden="true">→</span></a></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="muted">В этой бане покупок не было.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <!-- Телефон: история списком, как в мобильном макете -->
+        <ul class="hist-list">
+          @for (o of historyFiltered(); track o.id) {
+            <li>
+              <a [routerLink]="['/ticket', o.ticketToken]">
+                <span class="stack stack-xs">
+                  <b>{{ o.banya.name }} · {{ o.department.name }}</b>
+                  <span class="k">{{ dateFull(o.selection.date).replace(' 2026', '') }} · {{ o.selection.start }}–{{ o.selection.end }}{{ o.selection.kind === 'session' ? ' · ' + resources(o).toLowerCase() : '' }}</span>
+                </span>
+                <span class="hist-sum">{{ o.quote.total | money }} <span aria-hidden="true" class="accent">→</span></span>
+              </a>
+            </li>
+          } @empty {
+            <li class="muted">В этой бане покупок не было.</li>
+          }
+        </ul>
+        <span class="k">Билеты прошлых посещений доступны для просмотра.</span>
+      </section>
+    }
+  </div>
+}

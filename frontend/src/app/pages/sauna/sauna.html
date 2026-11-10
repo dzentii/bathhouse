@@ -1,0 +1,117 @@
+<app-site-header [step]="1" />
+<main class="container page-main">
+  <a class="back-link" [routerLink]="['/banya', banyaId()]"><span aria-hidden="true">←</span> К отделениям бани</a>
+  @if ((dept.hasValue() ? dept.value() : undefined); as v) {
+    <div class="title">
+      <div class="stack stack-sm">
+        <h1 class="h1-sm">{{ v.department.name }}</h1>
+        <span class="text-2">{{ v.banya.name }} · {{ v.banya.shortAddress }} · время — екатеринбургское</span>
+      </div>
+      <span class="whole">Арендуется целиком</span>
+    </div>
+  }
+  @if (dept.error(); as e) { <app-load-error class="mt-16" [message]="msg(e)" (retry)="dept.reload()" /> }
+  @if (flash(); as f) { <app-notice class="mt-24" kind="error" title="Выбор нужно изменить">{{ f }}</app-notice> }
+
+  <div class="split mt-32">
+    <div class="main">
+      <section class="card section">
+        <span class="label-caps">Дата</span>
+        <div class="cluster">
+          @for (d of (dates.hasValue() ? dates.value() : undefined) ?? []; track d.date) {
+            <button class="chip compact" type="button" [class.on]="d.date === date()" [disabled]="!d.hasSessions"
+                    [attr.aria-pressed]="d.date === date()" (click)="pickDate(d.date)">{{ wd(d.date) }}, {{ dm(d.date) }}</button>
+          }
+        </div>
+        @if (dates.error()) { <app-load-error (retry)="dates.reload()" /> }
+
+        <span class="label-caps sub-label">Занятость в этот день</span>
+        @if ((day.hasValue() ? day.value() : undefined); as dv) {
+          <div class="timeline" [style.--cols]="hours().length">
+            @for (h of hours(); track h) {
+              <div class="hcell">
+                <div class="bar" [class.busy]="dv.busy.includes(h)" [class.sel]="inRange(h)" [class.clash]="inRange(h) && dv.busy.includes(h)"></div>
+                <span>{{ h }}</span>
+              </div>
+            }
+          </div>
+          <div class="legend">
+            <span><span class="lg bar-lg"></span>Свободно</span>
+            <span><span class="lg bar-lg busy"></span>Занято / перерыв</span>
+            <span><span class="lg bar-lg sel"></span>Ваш интервал</span>
+          </div>
+        } @else if (day.error()) {
+          <app-load-error (retry)="day.reload()" />
+        } @else {
+          <span class="note">Загружаем расписание…</span>
+        }
+      </section>
+
+      <section class="card section">
+        <span class="label-caps">Начало</span>
+        <div class="cluster">
+          @for (s of starts(); track s.h) {
+            <button class="chip compact" type="button" [class.on]="s.h === start()" [disabled]="s.busy" [attr.aria-pressed]="s.h === start()" (click)="start.set(s.h)">{{ s.label }}</button>
+          }
+        </div>
+        <span class="label-caps mt-8">Длительность</span>
+        <div class="cluster">
+          @for (d of (day.hasValue() ? day.value() : undefined)?.durations ?? []; track d) {
+            <button class="chip compact" type="button" [class.on]="d === hoursCount()" [attr.aria-pressed]="d === hoursCount()" (click)="hoursCount.set(d)">{{ d }} ч</button>
+          }
+        </div>
+        @if (conflict(); as c) {
+          <div class="clash-msg" role="alert"><app-icon name="warn" [size]="20" [stroke]="1.8" class="clash-icon" />{{ c }}</div>
+        }
+        <span class="note">Шаг времени, минимальная длительность и перерыв между арендами — на согласовании.</span>
+      </section>
+
+      <section class="card">
+        <span class="label-caps">Состав компании</span>
+        <div class="guest-row">
+          <div><strong>Взрослые</strong><small>Имена гостей не нужны</small></div>
+          <div class="counter">
+            <button class="cnt" type="button" (click)="adults.set(adults() - 1)" [disabled]="adults() <= 1" aria-label="Меньше взрослых">−</button>
+            <output aria-live="polite">{{ adults() }}</output>
+            <button class="cnt" type="button" (click)="adults.set(adults() + 1)" [disabled]="atMax()" aria-label="Больше взрослых">+</button>
+          </div>
+        </div>
+        <div class="guest-row">
+          <div><strong>Дети</strong><small>Возраст укажете при оформлении</small></div>
+          <div class="counter">
+            <button class="cnt" type="button" (click)="kids.set(kids() - 1)" [disabled]="kids() <= 0" aria-label="Меньше детей">−</button>
+            <output aria-live="polite">{{ kids() }}</output>
+            <button class="cnt" type="button" (click)="kids.set(kids() + 1)" [disabled]="atMax()" aria-label="Больше детей">+</button>
+          </div>
+        </div>
+        <div class="caps">
+          <span>В стоимость включено до <strong>{{ (dept.hasValue() ? dept.value() : undefined)?.department?.baseGuests ?? '[уточняется]' }} гостей</strong></span>
+          <span>Максимальная вместимость — <strong>{{ (dept.hasValue() ? dept.value() : undefined)?.department?.maxGuests ?? '[уточняется]' }} человек</strong></span>
+        </div>
+      </section>
+    </div>
+
+    <aside aria-label="Ваш выбор" class="card side sticky">
+      <h2 class="price-lg">Аренда сауны</h2>
+      <dl class="sum">
+        <dt>Дата</dt><dd>{{ date() ? long(date()!) : '—' }}</dd>
+        <dt>Время</dt><dd class="strong">{{ start() != null ? rangeLabel() : '—' }}</dd>
+        <dt>Длительность</dt><dd>{{ hoursCount() }} ч</dd>
+        <dt>Гости</dt><dd>{{ guestsLabel() }}</dd>
+      </dl>
+      @if (q(); as q) {
+        <div class="quote-lines ruled">
+          @for (l of q.lines; track $index) { <div class="sum-row"><span>{{ l.label }}</span><span>{{ l.amount | money }}</span></div> }
+        </div>
+      }
+      @if (quote.error(); as e) { <app-notice kind="warn">{{ msg(e) }}</app-notice> }
+      @if (kids()) { <span class="note">Сумму с учётом возраста детей пересчитаем при оформлении.</span> }
+      <div class="spread">
+        <span class="text-2 text-sm">Предварительно</span>
+        <span class="price-lg">{{ canContinue() ? (q()?.total | money) : '—' }}</span>
+      </div>
+      <button class="btn btn-primary" type="button" [disabled]="!canContinue()" (click)="continue()">Продолжить оформление <span aria-hidden="true">→</span></button>
+      <span class="note">Сауна оплачивается полностью, без предоплаты. Время удерживается 10 минут после перехода к оплате.</span>
+    </aside>
+  </div>
+</main>

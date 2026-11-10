@@ -1,0 +1,62 @@
+<div class="bar">
+  <header class="container top">
+    <a routerLink="/" class="logo">
+      <span class="logo-name">Сандуновские бани</span>
+      <span class="logo-city">Екатеринбург</span>
+    </a>
+    <a routerLink="/" class="back"><span aria-hidden="true">←</span> На главную</a>
+  </header>
+</div>
+
+<main class="container page">
+  <section class="intro">
+    <span class="eyebrow">Личный кабинет</span>
+    <h1 class="title">Все ваши билеты в одном месте</h1>
+    <ul class="benefits">
+      <li><span aria-hidden="true" class="accent">—</span>Билет на сегодня и будущие посещения — открываются в один клик</li>
+      <li><span aria-hidden="true" class="accent">—</span>История покупок по обеим баням</li>
+      <li><span aria-hidden="true" class="accent">—</span>Имя и телефон подставляются в заказ автоматически</li>
+    </ul>
+    <span class="muted text-sm">Покупать можно и без входа — кабинет нужен только для удобства.</span>
+  </section>
+
+  <section class="form-card">
+    @if (expired()) { <app-notice kind="info">Сессия завершена. Войдите снова.</app-notice> }
+
+    @if (step() === 'phone') {
+      <form class="stack form" (ngSubmit)="requestCode()" novalidate>
+        <h2 class="form-title">Вход по номеру телефона</h2>
+        <label for="ph" class="lbl">Телефон</label>
+        <input id="ph" name="phone" class="inp" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 000-00-00"
+               [ngModel]="phone()" (ngModelChange)="phone.set($event); error.set(null)"
+               [class.invalid]="!!error()" [attr.aria-invalid]="!!error()" aria-describedby="ph-err">
+        @if (error(); as m) { <span id="ph-err" class="field-error">{{ m }}</span> }
+        <button class="btn btn-primary full" type="submit" [disabled]="busy()">{{ busy() ? 'Отправляем…' : 'Получить код' }}</button>
+        <span class="note">Отправим SMS с кодом. Если вы покупали билеты на этот номер, они появятся в кабинете.</span>
+      </form>
+    } @else {
+      <form class="stack form" (ngSubmit)="verify()" novalidate>
+        <button type="button" class="link-back" (click)="changePhone()"><span aria-hidden="true">←</span> Изменить номер</button>
+        <h2 class="form-title">Введите код из SMS</h2>
+        <span class="text-2 text-md">Отправили на {{ phonePretty() }}</span>
+        <div role="group" aria-label="Код из SMS" class="code-row" (paste)="onPaste($event)">
+          @for (i of indexes; track i) {
+            <input #codeInput class="code" type="text" inputmode="numeric" maxlength="4" [attr.autocomplete]="i === 0 ? 'one-time-code' : 'off'"
+                   [attr.aria-label]="'Цифра ' + (i + 1)" [class.invalid]="!!error()"
+                   (input)="onDigit(i, $event)" (keydown)="onKey(i, $event)">
+          }
+        </div>
+        @if (error(); as m) { <span class="field-error" role="alert">{{ m }}</span> }
+        @if (demoCode(); as c) {
+          <app-notice kind="info" title="Демо-режим">SMS не отправляются. Код для входа: <b>{{ c }}</b></app-notice>
+        }
+        <button class="btn btn-primary full" type="submit" [disabled]="busy() || !codeComplete()">{{ busy() ? 'Проверяем…' : 'Войти' }}</button>
+        @if (resendIn() > 0) {
+          <span class="note">Отправить код повторно через {{ resendLabel() }}</span>
+        } @else {
+          <button type="button" class="link-btn self-start text-sm" (click)="resend()">Отправить код повторно</button>
+        }
+      </form>
+    }
+  </section>
+</main>

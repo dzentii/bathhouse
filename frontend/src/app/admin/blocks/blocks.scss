@@ -1,0 +1,14 @@
+.aseat { width: 52px; height: 52px; border-radius: 2px; font: 600 14px/1 var(--sans); cursor: pointer; background: #fff; color: var(--text); border: 1px solid #b4bdb7; }
+.aseat.sold { background: var(--occupied); color: var(--disabled); border-color: var(--occupied); }
+.aseat.blocked { background: var(--error-bg); color: var(--error-text); border: 1px dashed var(--error-accent); }
+.aseat.on { background: var(--green); color: var(--on-green); border: 1px solid var(--green); }
+
+
+.legend-sm { font-size: 12px; }
+.sw { width: 18px; height: 18px; }
+.sw-free { border: 1px solid #b4bdb7; }
+.sw-sold { background: var(--occupied); }
+.sw-blocked { border: 1px dashed var(--error-accent); background: var(--error-bg); }
+.sw-picked { background: var(--green); }
+.zone { gap: 8px; }
+.picked-text { font-size: 15px; line-height: 1.6; }

@@ -1,0 +1,73 @@
+<h1 class="admin-h1">Расписание</h1>
+<div class="filters">
+  <label class="fl">Баня
+    <select class="sel" [ngModel]="banyaId()" (ngModelChange)="banyaId.set($event)">
+      @for (c of (catalog.hasValue() ? catalog.value() : undefined) ?? []; track c.banya.id) { <option [value]="c.banya.id">{{ c.banya.name }}</option> }
+    </select>
+  </label>
+  <label class="fl">Отделение
+    <select class="sel" [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event)">
+      @for (d of departments(); track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+    </select>
+  </label>
+  <label class="fl">Неделя с <input class="sel" type="date" [ngModel]="weekStart()" (ngModelChange)="weekStart.set($event || today)"></label>
+</div>
+<span class="note">Сауны работают по часам; в первой версии редактируются расписания сеансовых залов.</span>
+
+@if (week.error(); as e) { <app-load-error [message]="err(e)" (retry)="week.reload()" /> }
+@if ((week.hasValue() ? week.value() : undefined); as w) {
+  <section class="card admin">
+    <h2 class="ct">Регулярный график · выберите сеанс для изменения</h2>
+    <div class="scroll-x">
+      <div class="week">
+        @for (d of w.days; track d.date) {
+          <div class="day">
+            <span class="dh">{{ wd(d.date) }}, {{ dm(d.date) }}</span>
+            @for (s of d.sessions; track s.id) {
+              <button type="button" class="ss" [class.cancel]="s.cancelled" [class.on]="picked()?.date === d.date && picked()?.id === s.id"
+                      (click)="pick({ date: d.date, id: s.id, start: s.start, end: s.end, cancelled: s.cancelled })">{{ s.start }}–{{ s.end }}</button>
+            } @empty {
+              <span class="ss closed">Закрыто</span>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="admin-row">
+    <section class="card admin exc-pane">
+      <h2 class="ct">Исключения</h2>
+      <ul class="exc">
+        @for (x of w.exceptions; track $index) { <li><span>{{ dm(x.date) }}</span><span class="text-3">{{ x.text }}</span></li> }
+        @empty { <li class="muted">Исключений нет</li> }
+      </ul>
+      <span class="note">Приоритет регулярного графика, праздников и ручных исключений — на согласовании.</span>
+    </section>
+
+    <section class="card admin edit-pane">
+      @if (picked(); as p) {
+        <h2 class="ct">Изменение · {{ dm(p.date) }}, сеанс {{ p.start }}–{{ p.end }}</h2>
+        @if (p.cancelled) {
+          <app-notice kind="info">Сеанс уже отменён. Восстановление — на согласовании.</app-notice>
+        } @else {
+          <label class="fl">Действие
+            <select class="sel"><option>Отменить сеанс</option></select>
+          </label>
+          <span class="note">Изменение времени сеанса и назначение мужского/женского дня — после согласования полей формы.</span>
+          @if (error(); as m) { <app-notice kind="error">{{ m }}</app-notice> }
+          @if (done()) { <app-notice kind="success" title="Опубликовано">Сеанс отменён и больше не предлагается посетителям.</app-notice> }
+          <div class="actions">
+            <button class="btn btn-primary btn-sm" type="button" (click)="apply(p)" [disabled]="busy()">{{ busy() ? 'Проверяем…' : 'Проверить и опубликовать' }}</button>
+            <button class="btn btn-quiet btn-sm" type="button" (click)="picked.set(null)">Отменить</button>
+          </div>
+        }
+      } @else {
+        <h2 class="ct">Изменение</h2>
+        <span class="muted text-sm">Выберите сеанс в графике выше.</span>
+        @if (done()) { <app-notice kind="success" title="Опубликовано">Сеанс отменён и больше не предлагается посетителям.</app-notice> }
+      }
+    </section>
+  </div>
+}
+

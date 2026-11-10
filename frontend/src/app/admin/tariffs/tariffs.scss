@@ -1,0 +1,10 @@
+tr.hl td { background: var(--surface-hover); }
+
+.narrow { max-width: 640px; }
+.f-banya { flex: 1 1 160px; }
+.f-dept { flex: 2 1 240px; }
+.f-date { flex: 1 1 140px; }
+.rules { padding: 0; gap: 0; }
+.rules-title { padding: 20px 24px; }
+.rules-error { padding: 0 24px 24px; }
+.form { flex: 1 1 340px; }

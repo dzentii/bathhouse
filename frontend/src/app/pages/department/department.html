@@ -1,0 +1,124 @@
+<app-site-header [activeBanya]="banyaId()" />
+<main class="container page">
+  @if (data.error(); as e) {
+    <app-load-error [message]="msg(e)" (retry)="data.reload()" />
+  }
+  @if ((data.hasValue() ? data.value() : undefined); as v) {
+    <nav aria-label="Хлебные крошки" class="breadcrumbs">
+      <a routerLink="/">Главная</a><span aria-hidden="true">/</span>
+      <a [routerLink]="['/banya', v.banya.id]">{{ v.banya.name }}</a><span aria-hidden="true">/</span>
+      <span class="current">{{ v.department.name }}</span>
+    </nav>
+
+    @if (v.department.mode === 'info') {
+      <!-- Справочное отделение: без предварительной продажи -->
+      <section class="top top-start">
+        <div class="ph info-photo">Фото отделения</div>
+        <div class="facts">
+          <span class="onsite">Без предварительной продажи</span>
+          <h1 class="h1 title">{{ v.department.name }}</h1>
+          <span class="text-2 text-lg">{{ v.banya.name }} · {{ v.banya.shortAddress }}@for (t of v.department.tags; track t) { · {{ t }} }</span>
+          <div class="callout" role="note">
+            <app-icon name="info" [size]="24" class="accent" />
+            <div class="stack stack-sm">
+              <strong class="callout-title">Онлайн-оплата для этого отделения не предусмотрена</strong>
+              <span class="text-2 text-sm callout-text">Билет покупается в кассе бани в день посещения. Бронировать заранее не нужно.</span>
+            </div>
+          </div>
+          <p class="body-text">{{ v.department.description }}</p>
+        </div>
+      </section>
+      @if (v.department.info; as info) {
+        <section class="boxes">
+          <div class="box"><span class="eyebrow box-label">Режим работы</span><span>{{ info.schedule }}</span></div>
+          <div class="box"><span class="eyebrow box-label">Стоимость на месте</span><span>{{ info.priceOnSite }}</span></div>
+          <div class="box"><span class="eyebrow box-label">Как купить</span><span>{{ info.howToBuy }}</span></div>
+        </section>
+      }
+      <section class="cluster cluster-lg mt-48">
+        <a class="btn btn-ghost" [routerLink]="['/banya', v.banya.id]"><span aria-hidden="true">←</span> Все отделения {{ v.banya.name.replace('Баня', 'Бани') }}</a>
+        <a class="btn btn-ghost" routerLink="/">Выбрать другую баню</a>
+      </section>
+    } @else {
+      <section class="top">
+        <div class="gallery">
+          <div class="ph main-photo">Главное фото {{ isSauna() ? 'сауны' : 'отделения' }}</div>
+          <div class="ph thumb">Парная</div>
+          <div class="ph thumb">{{ isSauna() ? 'Бассейн / зона отдыха' : 'Зона отдыха' }}</div>
+        </div>
+        <div class="facts">
+          <span class="eyebrow">{{ isSauna() ? 'Сауна целиком' : 'Места на сеанс' }}</span>
+          <h1 class="h1 title">{{ v.department.name }}</h1>
+          <span class="text-2 text-lg">{{ v.banya.name }} · {{ v.banya.shortAddress }}</span>
+          <div class="cluster">
+            @for (t of v.department.tags; track t) { <span class="tag tag-md">{{ t }}</span> }
+            @if (isSauna()) {
+              <span class="tag tag-md">В цене до {{ v.department.baseGuests ?? '[уточняется]' }} гостей</span>
+              <span class="tag tag-md">Макс. {{ v.department.maxGuests ?? '[уточняется]' }} человек</span>
+            } @else if (v.department.seatsTotal) {
+              <span class="tag tag-md">{{ v.department.seatsTotal }} мест в зале</span>
+            }
+          </div>
+          @if (v.department.rules.length) {
+            <ul class="rules">
+              @for (r of v.department.rules; track r) { <li><span aria-hidden="true" class="accent">—</span>{{ r }}</li> }
+            </ul>
+          }
+          <div class="cta">
+            @if (v.department.priceFrom != null) {
+              <div class="stack stack-xs cta-price">
+                <span class="muted note">{{ isSauna() ? 'Аренда, час' : 'Стоимость места' }}</span>
+                <span class="price">от {{ v.department.priceFrom | money }}</span>
+              </div>
+            }
+            <a class="btn btn-primary" [routerLink]="['/banya', v.banya.id, v.department.id, isSauna() ? 'sauna' : 'seans']">
+              {{ isSauna() ? 'Выбрать время' : 'Выбрать сеанс' }} <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="details">
+        <div class="stack stack-md">
+          <h2 class="section-title">Описание</h2>
+          <p class="body-text">{{ v.department.description }}</p>
+          @if (v.department.rules.length) {
+            <h2 class="section-title mt-24">Правила посещения</h2>
+            <ul class="rules-list">
+              @for (r of v.department.rules; track r) { <li>{{ r }}</li> }
+            </ul>
+          }
+        </div>
+        <div class="stack details-side">
+          <div class="stack">
+            <h2 class="section-title">{{ isSauna() ? 'Часы работы' : 'График сеансов' }}</h2>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Дни</th><th>{{ isSauna() ? 'Время' : 'Сеансы' }}</th></tr></thead>
+                <tbody>
+                  @for (r of v.scheduleRows; track r.days) { <tr><td>{{ r.days }}</td><td class="cell-soft">{{ r.value }}</td></tr> }
+                </tbody>
+              </table>
+            </div>
+            <span class="note">Время — екатеринбургское.</span>
+          </div>
+          <div class="stack">
+            <h2 class="section-title">Тарифы</h2>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Категория</th><th>Будни</th><th>Выходные</th></tr></thead>
+                <tbody>
+                  @for (t of v.tariffRows; track t.label) { <tr><td>{{ t.label }}</td><td>{{ t.weekday }}</td><td>{{ t.weekend }}</td></tr> }
+                </tbody>
+              </table>
+            </div>
+            <span class="note">Возрастные границы, льготы и праздничные условия — на согласовании.</span>
+          </div>
+        </div>
+      </section>
+    }
+  } @else if (data.isLoading()) {
+    <div class="ph loading">Загрузка…</div>
+  }
+</main>
+<app-site-footer />

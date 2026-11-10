@@ -1,0 +1,19 @@
+<div class="top">
+  <div class="brand">
+    <a routerLink="/" class="serif brand-name">Сандуновские бани</a>
+    <span class="label-caps brand-tag">Админка{{ api.isDemo ? ' · демо-данные' : '' }}</span>
+  </div>
+  <div class="user">
+    {{ auth.session()?.name }}
+    <button type="button" class="link-btn text-sm" (click)="auth.logout()">Выйти</button>
+  </div>
+</div>
+<div class="body">
+  <nav aria-label="Разделы" class="side">
+    @for (l of links; track l.path) {
+      <a class="nav" [routerLink]="l.path" routerLinkActive="active" ariaCurrentWhenActive="page">{{ l.label }}</a>
+    }
+  </nav>
+  <main class="content"><router-outlet /></main>
+</div>
+

@@ -1,0 +1,54 @@
+<app-site-header />
+<main class="container page">
+  <section class="hero">
+    <span class="eyebrow">Онлайн-запись · 2 бани · {{ totalDepts() }} отделений</span>
+    <h1 class="h1">Выберите баню, чтобы начать</h1>
+    <p class="lead">Сначала адрес, затем отделение, дата и время. На странице бани сразу видны все отделения: места на сеанс, сауны целиком и отделения с покупкой билета на месте.</p>
+    <p class="test-note"><app-icon name="info" class="accent" /> Оплата на сайте тестовая: деньги не списываются, билет не является чеком и не даёт права прохода.</p>
+  </section>
+
+  @if (data.error()) {
+    <app-load-error class="load-error" (retry)="data.reload()" />
+  }
+
+  <section aria-label="Бани" class="banyas">
+    @if ((data.hasValue() ? data.value() : undefined); as list) {
+      @for (b of list; track b.banya.id) {
+        <article class="banya">
+          <div class="ph ph-cover photo">Фото: фасад и интерьер {{ b.banya.name }}</div>
+          <div class="body">
+            <div class="title-row">
+              <h2 class="banya-name">{{ b.banya.name }}</h2>
+              <span class="muted note">{{ b.departments.length }} {{ word(b.departments.length) }}</span>
+            </div>
+            <div class="addr"><app-icon name="pin" class="accent" /> {{ b.banya.address }}</div>
+            <p class="desc">{{ b.banya.description }}</p>
+            <div class="cluster">
+              @for (t of groupTags(b.departments); track t) { <span class="tag tag-md">{{ t }}</span> }
+            </div>
+            <a class="btn btn-primary self-start mt-8" [routerLink]="['/banya', b.banya.id]">Выбрать {{ b.banya.name }} <span aria-hidden="true">→</span></a>
+          </div>
+        </article>
+      }
+    } @else if (data.isLoading()) {
+      @for (i of [1, 2]; track i) { <div class="ph skeleton">Загрузка…</div> }
+    }
+  </section>
+
+  <section id="how" class="how">
+    <div class="stack">
+      <span class="eyebrow">Как проходит запись</span>
+      <h2 class="h2 how-title">Четыре шага до билета</h2>
+    </div>
+    <ol class="steps">
+      @for (s of steps; track s.n) {
+        <li>
+          <span class="serif num">{{ s.n }}</span>
+          <strong>{{ s.title }}</strong>
+          <span>{{ s.text }}</span>
+        </li>
+      }
+    </ol>
+  </section>
+</main>
+<app-site-footer />

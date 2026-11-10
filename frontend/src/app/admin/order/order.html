@@ -1,0 +1,52 @@
+<a routerLink="/admin/orders" class="back-link"><span aria-hidden="true">←</span> К списку заказов</a>
+@if (order.error(); as e) {
+  <app-load-error [message]="err(e)" (retry)="order.reload()" />
+} @else if ((order.hasValue() ? order.value() : undefined); as o) {
+  <div class="head">
+    <h1 class="admin-h1">Заказ {{ o.id }}</h1>
+    <span [class]="'badge badge-' + o.status">{{ label(o.status) }}</span>
+  </div>
+  <div class="grid">
+    <section class="card admin">
+      <h2 class="ct">Посещение и ресурсы</h2>
+      <dl class="dl">
+        <dt>Баня</dt><dd>{{ o.banya.name }} · {{ o.banya.shortAddress }}</dd>
+        <dt>Отделение</dt><dd>{{ o.department.name }}</dd>
+        <dt>Дата</dt><dd>{{ long(o.selection.date) }}</dd>
+        <dt>{{ o.selection.kind === 'session' ? 'Сеанс' : 'Время' }}</dt><dd>{{ o.selection.start }}–{{ o.selection.end }}</dd>
+        @if (o.selection.kind === 'session') { <dt>Места</dt><dd>{{ o.selection.seats.join(', ') }}</dd> }
+        @else { <dt>Помещение</dt><dd>Сауна целиком · {{ o.selection.hours }} ч</dd> }
+      </dl>
+    </section>
+    <section class="card admin">
+      <h2 class="ct">Покупатель и гости</h2>
+      <dl class="dl">
+        <dt>Имя</dt><dd>{{ o.buyer.name }}</dd>
+        <dt>Телефон</dt><dd>{{ o.buyer.phone }}</dd>
+        <dt>Взрослые</dt><dd>{{ o.guests.adults }}</dd>
+        @if (o.guests.children.length) { <dt>Дети</dt><dd>{{ kids(o) }}</dd> }
+      </dl>
+      <span class="note">Объём контактных данных для сотрудника — на согласовании.</span>
+    </section>
+    <section class="card admin">
+      <h2 class="ct">Стоимость и оплата</h2>
+      <dl class="dl">
+        @if (o.quote.tariffName) { <dt>Тариф</dt><dd>{{ o.quote.tariffName }}</dd> }
+        @for (l of o.quote.lines; track $index) { <dt>{{ l.label }}</dt><dd>{{ l.amount | money }}</dd> }
+        <dt>Зафиксировано</dt><dd class="strong">{{ o.quote.total | money }} (полная)</dd>
+        <dt>Тестовая оплата</dt><dd>{{ payText(o.status) }}</dd>
+      </dl>
+      <span class="note">Сумма не пересчитывается при смене тарифа.</span>
+    </section>
+    <section class="card admin">
+      <h2 class="ct">История</h2>
+      <ol class="hist">
+        @for (h of o.history; track $index) { <li><span class="muted hist-time">{{ time(h.at) }}</span>{{ h.text }}</li> }
+      </ol>
+    </section>
+  </div>
+  <span class="note">Просмотр без действий: отмена, перенос и возврат в первую версию не входят.</span>
+} @else {
+  <span class="note">Загружаем заказ…</span>
+}
+

@@ -1,0 +1,23 @@
+<div class="page">
+  <div class="box">
+    <div class="brand">
+      <span class="serif brand-name">Сандуновские бани</span>
+      <span class="label-caps brand-tag">Служебный раздел</span>
+    </div>
+    <form class="form" (ngSubmit)="submit()" novalidate>
+      <h1 class="title">Вход для сотрудников</h1>
+      @if (expired()) { <app-notice kind="info">Сессия завершена. Войдите снова.</app-notice> }
+      @if (error(); as e) { <app-notice kind="error">{{ e }}</app-notice> }
+      <label for="lg" class="lbl">Логин</label>
+      <input id="lg" name="login" class="inp" type="text" autocomplete="username" required [(ngModel)]="login">
+      <label for="pw" class="lbl">Пароль</label>
+      <input id="pw" name="password" class="inp" type="password" autocomplete="current-password" required [(ngModel)]="password">
+      <button class="btn btn-primary submit" type="submit" [disabled]="busy()">{{ busy() ? 'Проверяем…' : 'Войти' }}</button>
+    </form>
+    <span class="note hint">
+      Способ авторизации, срок сессии и выход — на согласовании.
+      @if (api.isDemo) { <br>Демо-режим: подойдёт любой логин и пароль от 4 символов. }
+    </span>
+  </div>
+</div>
+

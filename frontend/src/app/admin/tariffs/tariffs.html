@@ -1,0 +1,64 @@
+<h1 class="admin-h1">Тарифы</h1>
+<div class="filters narrow">
+  <label class="fl f-banya">Баня
+    <select class="sel" [ngModel]="banyaId()" (ngModelChange)="banyaId.set($event)">
+      @for (c of (catalog.hasValue() ? catalog.value() : undefined) ?? []; track c.banya.id) { <option [value]="c.banya.id">{{ c.banya.name }}</option> }
+    </select>
+  </label>
+  <label class="fl f-dept">Отделение
+    <select class="sel" [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event)">
+      @for (d of departments(); track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+    </select>
+  </label>
+</div>
+<app-notice kind="info">Новые условия применяются только к новым расчётам. Суммы, зафиксированные в действующих удержаниях и подтверждённых заказах, не меняются.</app-notice>
+
+<div class="admin-row">
+  <section class="card admin pane-main rules">
+    <h2 class="ct rules-title">Правила</h2>
+    @if (rules.error(); as e) { <div class="rules-error"><app-load-error [message]="err(e)" (retry)="rules.reload()" /></div> }
+    <div class="scroll-x">
+      <table class="table compact">
+        <thead><tr><th>Условие</th><th>Дни · время</th><th>Период</th><th>Цена</th><th>Статус</th></tr></thead>
+        <tbody>
+          @for (r of (rules.hasValue() ? rules.value() : undefined) ?? []; track r.id) {
+            <tr [class.hl]="r.id === savedId()">
+              <td>{{ r.condition }}</td>
+              <td>{{ r.days }} · {{ r.time }}</td>
+              <td>с {{ ru(r.from) }}{{ r.to ? ' по ' + ru(r.to) : '' }}</td>
+              <td>{{ r.price === 0 ? 'бесплатно' : (r.price | money) }}{{ r.unit === 'час' ? '/ч' : '' }}</td>
+              <td><span class="badge" [class]="'badge ' + stateClass(r)">{{ state(r) }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <form class="card admin form" (ngSubmit)="save()">
+    <h2 class="ct">Новое правило</h2>
+    <label class="fl">Условие
+      <select class="sel" name="condition" [(ngModel)]="form.condition">
+        @for (c of conditions(); track c) { <option [value]="c">{{ c }}</option> }
+      </select>
+    </label>
+    <label class="fl">Дни
+      <select class="sel" name="days" [(ngModel)]="form.days">
+        <option>Пн–Пт</option><option>Сб–Вс</option><option>Все дни</option>
+      </select>
+    </label>
+    <div class="cluster cluster-lg">
+      <label class="fl f-date">Действует с<input class="sel" type="date" name="from" [(ngModel)]="form.from" required></label>
+      <label class="fl f-date">по (необязательно)<input class="sel" type="date" name="to" [(ngModel)]="form.to"></label>
+    </div>
+    <label class="fl">Цена, ₽ (с копейками)<input class="sel" type="text" inputmode="decimal" name="price" [(ngModel)]="form.price" placeholder="1 500,00"></label>
+    @if (error(); as m) { <app-notice kind="warn">{{ m }}</app-notice> }
+    @if (savedId()) { <app-notice kind="success" title="Сохранено">Правило опубликовано для новых расчётов.</app-notice> }
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" type="submit" [disabled]="busy()">{{ busy() ? 'Проверяем…' : 'Проверить и сохранить' }}</button>
+      <button class="btn btn-quiet btn-sm" type="button" (click)="reset()">Очистить</button>
+    </div>
+    <span class="note">Праздники, льготы, возрастные и временные границы — на согласовании.</span>
+  </form>
+</div>
+

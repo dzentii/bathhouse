@@ -1,0 +1,15 @@
+.week { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); gap: 10px; min-width: 820px; }
+.day { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dh { font-size: 13px; font-weight: 600; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.ss { padding: 8px; font: 400 12px var(--sans); background: var(--chip-soft); border: 1px solid transparent; color: var(--text); text-align: left; cursor: pointer; }
+.ss:hover { border-color: var(--green); }
+.ss.on { background: var(--green); color: var(--on-green); }
+.ss.cancel { background: transparent; border: 1px dashed var(--error-line); color: var(--disabled); text-decoration: line-through; }
+.ss.closed { background: transparent; border: 1px dashed var(--line-quiet); color: var(--muted); cursor: default; }
+.exc { margin: 0; padding: 0; list-style: none; }
+.exc li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
+.exc li:last-child { border-bottom: 0; }
+
+
+.exc-pane { flex: 1 1 360px; }
+.edit-pane { flex: 1 1 420px; }

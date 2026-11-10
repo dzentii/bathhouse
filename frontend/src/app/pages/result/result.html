@@ -1,0 +1,52 @@
+<app-site-header [step]="view() === 'success' ? 4 : 3" />
+<main class="container page-main page">
+  @if (!token) {
+    <app-notice kind="empty" title="Оформление не найдено">Результат доступен только в браузере, где оформлялся заказ. <a routerLink="/">На главную</a></app-notice>
+  } @else {
+    @let o = (order.hasValue() ? order.value() : undefined);
+    <section class="state" [class]="'state ' + view()" aria-live="polite">
+      @switch (view()) {
+        @case ('success') {
+          <div class="ico ico-success"><app-icon name="check" [size]="30" [stroke]="2" /></div>
+          <h1 class="ttl">Заказ оплачен</h1>
+          <p class="txt">Тестовая оплата на полную сумму {{ o?.quote?.total | money }} прошла. Один билет на весь заказ {{ o?.id }} доступен по защищённой ссылке.</p>
+          <div class="actions">
+            <a class="btn btn-primary" [routerLink]="['/ticket', o?.ticketToken]">Открыть билет</a>
+            <button class="btn btn-ghost" type="button" (click)="copy(o!)">{{ copied() ? 'Ссылка скопирована' : 'Скопировать ссылку' }}</button>
+          </div>
+        }
+        @case ('declined') {
+          <div class="ico ico-error"><app-icon name="cross" [size]="28" [stroke]="2" /></div>
+          <h1 class="ttl">Оплата не прошла</h1>
+          <p class="txt">Тестовая оплата отклонена, билет не выдан, удержание снято. Повторная попытка по тому же заказу — на согласовании; можно оформить выбор заново.</p>
+          <div class="actions">
+            <a class="btn btn-primary" [routerLink]="backLink()">Вернуться к выбору</a>
+          </div>
+        }
+        @case ('pending') {
+          <div class="ico spinner" aria-hidden="true"></div>
+          <h1 class="ttl">Уточняем результат оплаты</h1>
+          <p class="txt">Ответ ещё не получен. Это не отказ и не успех — мы запрашиваем сохранённый итог. Повторно платить не нужно.</p>
+          <div class="actions">
+            <button class="btn btn-ghost" type="button" (click)="check()" [disabled]="order.isLoading()">{{ order.isLoading() ? 'Проверяем…' : 'Проверить ещё раз' }}</button>
+          </div>
+          @if (order.error()) { <span class="note">Связи с сервером пока нет — попробуйте ещё раз через несколько секунд.</span> }
+        }
+        @case ('expired') {
+          <div class="ico ico-neutral"><app-icon name="timer" [size]="30" [stroke]="1.8" /></div>
+          <h1 class="ttl">Время удержания вышло</h1>
+          <p class="txt">10 минут истекли до подтверждения оплаты, {{ o?.selection?.kind === 'sauna' ? 'сауна освобождена' : 'места освобождены' }}. Выберите заново — доступность и цену проверим ещё раз.</p>
+          <div class="actions"><a class="btn btn-primary" [routerLink]="backLink()">Выбрать заново</a></div>
+        }
+        @case ('released') {
+          <div class="ico ico-neutral"><app-icon name="info" [size]="28" /></div>
+          <h1 class="ttl">Удержание снято</h1>
+          <p class="txt">Вы вернулись к выбору, прежнее удержание прекращено целиком. Это оформление больше не ожидает оплаты.</p>
+          <div class="actions"><a class="btn btn-primary" [routerLink]="backLink()">К выбору</a></div>
+        }
+      }
+    </section>
+    <p class="note disclaimer">Оплата тестовая: настоящего списания нет, билет не является чеком и не даёт права прохода.</p>
+  }
+</main>
+

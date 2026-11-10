@@ -1,0 +1,88 @@
+<app-site-header [step]="3" />
+<main class="container page-main">
+  @if (!token) {
+    <app-notice kind="empty" title="Оформление не найдено">Доступ к этому оформлению есть только в браузере, где оно создано. <a routerLink="/">На главную</a></app-notice>
+  } @else if (order.error(); as e) {
+    <app-load-error [message]="msg(e)" (retry)="order.reload()" />
+  } @else if ((order.hasValue() ? order.value() : undefined); as o) {
+    <section aria-live="polite" class="hold" [class.low]="remaining() <= 60">
+      <app-icon name="timer" [size]="32" />
+      <div class="stack stack-xs hold-text">
+        <strong class="title-17">{{ heldTitle(o) }}</strong>
+        <span class="text-2 text-sm">Срок определяет сервер — обновление страницы его не продлевает.</span>
+      </div>
+      <div class="timer">
+        <span class="serif clock" role="timer" [attr.aria-label]="'Осталось ' + clock()">{{ clock() }}</span>
+        <div class="track"><div class="fill" [style.width.%]="remaining() / 6"></div></div>
+      </div>
+    </section>
+
+    <div class="split mt-24">
+      <div class="main">
+        @if (o.previousTotal != null) {
+          <section class="changed" role="alert">
+            <strong class="title-17 changed-title">Сумма изменилась</strong>
+            <span class="changed-text">При проверке заказа применён действующий тариф: было <s>{{ o.previousTotal | money }}</s>, стало <strong class="strong">{{ o.quote.total | money }}</strong>. Новая сумма закреплена до окончания удержания.</span>
+            <label class="agree">
+              <input type="checkbox" [checked]="o.newTotalConfirmed" [disabled]="o.newTotalConfirmed || confirming()" (change)="confirmTotal()">
+              Согласен с новой суммой
+            </label>
+          </section>
+        }
+
+        <section class="card gap-16">
+          <h2 class="h2-card">Состав заказа</h2>
+          <dl class="dl-grid">
+            <div><dt>Посещение</dt><dd>{{ o.banya.name }} · {{ o.department.name }}</dd></div>
+            <div><dt>Дата и время</dt><dd>{{ long(o.selection.date) }} · {{ o.selection.start }}–{{ o.selection.end }}</dd></div>
+            <div><dt>{{ o.selection.kind === 'session' ? 'Места' : 'Помещение' }}</dt><dd>{{ res(o) }}</dd></div>
+            <div><dt>Гости</dt><dd>{{ guests(o) }}</dd></div>
+            <div><dt>Покупатель</dt><dd>{{ o.buyer.name }} · {{ o.buyer.phone }}</dd></div>
+            <div><dt>Заказ</dt><dd>{{ o.id }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="card gap-12">
+          <div class="spread center">
+            <div class="stack stack-xs">
+              <strong class="title-16">Передумали?</strong>
+              <span class="text-2 text-sm">Удержание {{ o.selection.kind === 'session' ? 'всех мест' : 'сауны' }} будет снято — {{ o.selection.kind === 'session' ? 'их' : 'её' }} смогут занять другие гости.</span>
+            </div>
+            <button class="btn btn-ghost" type="button" (click)="changeSelection(o)" [disabled]="paying() || releasing()">{{ releasing() ? 'Снимаем удержание…' : 'Изменить выбор' }}</button>
+          </div>
+          @if (releaseError(); as m) { <app-notice kind="error">{{ m }}</app-notice> }
+        </section>
+      </div>
+
+      <aside aria-label="Оплата" class="card side sticky pay">
+        <h2 class="h2-card">К оплате</h2>
+        <span class="serif total">{{ o.quote.total | money }}</span>
+        <span class="text-2 text-sm">Полная стоимость заказа. Предоплаты и доплаты нет.</span>
+
+        <fieldset class="seg">
+          <legend class="label-caps">Тестовый режим · исход оплаты</legend>
+          <div class="seg-row">
+            @for (opt of outcomes; track opt.value) {
+              <label [class.on]="outcome() === opt.value">
+                <input type="radio" name="outcome" [value]="opt.value" [checked]="outcome() === opt.value" (change)="setOutcome(opt.value)">{{ opt.label }}
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        @if (payError(); as e) { <app-notice kind="error">{{ e.message }}</app-notice> }
+        @if (needsConfirm(o)) {
+          <button class="btn" type="button" disabled>Подтвердите новую сумму</button>
+        } @else {
+          <button class="btn btn-primary" type="button" (click)="pay(o)" [disabled]="paying() || remaining() <= 0">
+            {{ paying() ? 'Выполняем тестовую оплату…' : 'Оплатить ' + (o.quote.total | money) }}
+          </button>
+        }
+        <span class="note">Тестовая оплата: деньги не списываются. Повторное нажатие не создаст второй платёж.</span>
+      </aside>
+    </div>
+  } @else {
+    <span class="note">Загружаем заказ…</span>
+  }
+</main>
+

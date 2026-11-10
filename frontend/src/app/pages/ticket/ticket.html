@@ -1,0 +1,69 @@
+<app-site-header>
+  @if ((ticket.hasValue() ? ticket.value() : undefined)) {
+    <div class="no-print cluster">
+      <button class="btn btn-ghost btn-sm" type="button" (click)="copy()"><app-icon name="copy" /> {{ copied() ? 'Ссылка скопирована' : 'Скопировать ссылку' }}</button>
+      <button class="btn btn-ghost btn-sm" type="button" (click)="print()">Распечатать</button>
+      @if (pdf(); as url) { <a class="btn btn-ghost btn-sm" [href]="url" target="_blank" rel="noopener">Скачать PDF</a> }
+    </div>
+  }
+</app-site-header>
+<main class="wrap">
+  @if ((ticket.hasValue() ? ticket.value() : undefined); as o) {
+    <article aria-label="Электронный билет" class="ticket">
+      <div class="band"><span>Тестовый электронный билет</span><span>Один билет на весь заказ</span></div>
+      <div class="paper">
+        <div class="head">
+          <div class="stack stack-sm brand">
+            <span class="serif brand-name">Сандуновские бани</span>
+            <h1 class="serif dept">{{ o.department.name }}</h1>
+            <span class="address">{{ o.banya.name }} · {{ o.banya.address }}</span>
+          </div>
+          <div class="right">
+            <span class="k">Заказ</span>
+            <span class="order-id">{{ o.id }}</span>
+          </div>
+        </div>
+        <div class="cut"></div>
+        <dl class="grid">
+          <div><dt class="k">Дата</dt><dd class="v">{{ full(o.selection.date) }}</dd></div>
+          <div><dt class="k">Время</dt><dd class="v v-lg">{{ o.selection.start }} – {{ o.selection.end }}</dd><span class="hint">окончание фиксировано, без дополнительного времени</span></div>
+          <div><dt class="k">{{ o.selection.kind === 'session' ? 'Места' : 'Помещение' }}</dt><dd class="v v-lg">{{ res(o) }}</dd></div>
+          <div><dt class="k">Гости</dt><dd class="v">
+            @for (g of guestLines(o); track g) { {{ g }}<br> }
+          </dd></div>
+          @if (o.quote.tariffName) { <div><dt class="k">Тариф</dt><dd class="v">{{ o.quote.tariffName }}</dd></div> }
+          @if (o.buyer.name) { <div><dt class="k">Покупатель</dt><dd class="v">{{ o.buyer.name }}</dd></div> }
+        </dl>
+        <div class="cut"></div>
+        <div class="foot">
+          <div class="stack stack-sm">
+            <span class="k">Статус</span>
+            <span class="paid"><app-icon name="check" [stroke]="2.2" /> Оплачено (тест) · {{ paidAt(o) }}</span>
+          </div>
+          <div class="right">
+            <span class="k">Полная стоимость</span>
+            <span class="serif total">{{ o.quote.total | money }}</span>
+          </div>
+        </div>
+        <p class="disclaimer">Тестовый билет: не подтверждает реальное списание денег, не является кассовым чеком и не даёт права прохода в действующую баню.</p>
+      </div>
+    </article>
+    <section class="text-2 about">
+      <span>Сохраните ссылку — по ней билет откроется на телефоне и компьютере без входа в аккаунт.</span>
+      <span class="note">Срок действия ссылки и способ её восстановления — на согласовании.</span>
+    </section>
+  } @else if (ticket.error(); as e) {
+    @if (notFound(e)) {
+      <section class="invalid">
+        <strong class="invalid-title">Билет не найден</strong>
+        <span class="text-2 text-sm">Ссылка устарела или указана с ошибкой. Данные заказа не показываются.</span>
+        <a routerLink="/" class="text-sm">На главную</a>
+      </section>
+    } @else {
+      <app-load-error (retry)="ticket.reload()" />
+    }
+  } @else {
+    <span class="note">Загружаем билет…</span>
+  }
+</main>
+

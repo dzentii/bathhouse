@@ -1,0 +1,52 @@
+<h1 class="admin-h1">Заказы</h1>
+<div class="filters">
+  <label class="fl">Баня
+    <select class="sel" [ngModel]="banyaId()" (ngModelChange)="banyaId.set($event); departmentId.set('')">
+      <option value="">Все бани</option>
+      @for (c of (catalog.hasValue() ? catalog.value() : undefined) ?? []; track c.banya.id) { <option [value]="c.banya.id">{{ c.banya.name }}</option> }
+    </select>
+  </label>
+  <label class="fl">Отделение
+    <select class="sel" [ngModel]="departmentId()" (ngModelChange)="departmentId.set($event)">
+      <option value="">Все отделения</option>
+      @for (d of departments(); track d.id) { <option [value]="d.id">{{ d.name }}</option> }
+    </select>
+  </label>
+  <label class="fl">Дата посещения с <input class="sel" type="date" [ngModel]="from()" (ngModelChange)="from.set($event)"></label>
+  <label class="fl">по <input class="sel" type="date" [ngModel]="to()" (ngModelChange)="to.set($event)"></label>
+</div>
+<div class="cluster" role="group" aria-label="Статус">
+  @for (t of tabs(); track t.key) {
+    <button class="ftab" type="button" [class.on]="status() === t.key" [attr.aria-pressed]="status() === t.key" (click)="status.set(t.key)">{{ t.label }} · {{ t.count }}</button>
+  }
+</div>
+
+@if (orders.error(); as e) {
+  <app-load-error [message]="err(e)" (retry)="orders.reload()" />
+} @else if (orders.isLoading() && !(orders.hasValue() ? orders.value() : undefined)) {
+  <span class="note">Загружаем заказы…</span>
+} @else if (!rows().length) {
+  <app-notice kind="empty" title="Заказов нет">По выбранным условиям ничего не найдено. Измените баню, отделение или период.</app-notice>
+} @else {
+  <div class="table-wrap">
+    <table class="table compact">
+      <thead><tr><th>Заказ</th><th>Баня · отделение</th><th>Дата и время</th><th>Ресурсы</th><th>Гости</th><th>Сумма</th><th>Статус</th><th><span class="visually-hidden">Открыть</span></th></tr></thead>
+      <tbody>
+        @for (o of rows(); track o.id) {
+          <tr>
+            <td class="strong">{{ o.id }}</td>
+            <td>{{ o.banya.name }} · {{ o.department.name }}</td>
+            <td>{{ long(o.selection.date) }} · {{ o.selection.start }}–{{ o.selection.end }}</td>
+            <td>{{ res(o) }}</td>
+            <td>{{ guests(o) }}</td>
+            <td>{{ o.quote.total | money }}</td>
+            <td><span [class]="'badge badge-' + o.status">{{ label(o.status) }}</span></td>
+            <td><a [routerLink]="['/admin/orders', o.id]" class="text-sm">Открыть</a></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+<span class="note">Суммы — тестовые: это не выручка и не отметка фактического посещения.</span>
+
