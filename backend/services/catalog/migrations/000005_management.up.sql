@@ -1,0 +1,14 @@
+CREATE SEQUENCE bath_id_seq OWNED BY baths.id;
+SELECT setval('bath_id_seq',COALESCE(max(id),0)+1,false) FROM baths;
+ALTER TABLE baths ALTER COLUMN id SET DEFAULT nextval('bath_id_seq');
+ALTER TABLE baths ADD COLUMN description text NOT NULL DEFAULT '';
+ALTER TABLE baths ADD COLUMN active boolean NOT NULL DEFAULT true;
+ALTER TABLE baths ADD COLUMN version bigint NOT NULL DEFAULT 1;
+ALTER TABLE departments ADD COLUMN sync_status text NOT NULL DEFAULT 'ready' CHECK(sync_status IN ('pending','ready','error'));
+ALTER TABLE departments ADD COLUMN sync_error text NOT NULL DEFAULT '';
+ALTER TABLE departments ADD COLUMN booking_setup jsonb;
+CREATE TABLE catalog_changes(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,admin_id uuid NOT NULL,entity_type text NOT NULL,entity_id text NOT NULL,action text NOT NULL,before_value jsonb,after_value jsonb,created_at timestamptz NOT NULL DEFAULT clock_timestamp());
+CREATE INDEX catalog_changes_entity_idx ON catalog_changes(entity_id,created_at DESC,id);
+CREATE TABLE inbox(id uuid PRIMARY KEY,processed_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE outbox(id uuid PRIMARY KEY,aggregate_id text NOT NULL,payload jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp(),delivered_at timestamptz,attempts integer NOT NULL DEFAULT 0,next_attempt_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX outbox_pending_idx ON outbox(next_attempt_at,created_at) WHERE delivered_at IS NULL;

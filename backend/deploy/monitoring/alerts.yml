@@ -1,0 +1,37 @@
+groups:
+- name: banya-backend
+  rules:
+  - alert: BanyaScrapeUnavailable
+    expr: up{job="banya"} == 0
+    for: 2m
+    labels: {severity: critical}
+    annotations: {summary: "Метрики backend недоступны"}
+  - alert: BanyaOutboxStalled
+    expr: banya_outbox_oldest_seconds > 120
+    for: 2m
+    labels: {severity: critical}
+    annotations: {summary: "События outbox ожидают доставки более двух минут"}
+  - alert: BanyaDeadLetter
+    expr: increase(banya_dead_letters_total[5m]) > 0
+    labels: {severity: warning}
+    annotations: {summary: "Новое событие в DLQ; требуется разбор и явный replay"}
+  - alert: BanyaHeapHigh
+    expr: banya_heap_bytes > 167772160
+    for: 5m
+    labels: {severity: warning}
+    annotations: {summary: "Go heap превышает 160 MiB"}
+  - alert: BanyaPoolSaturated
+    expr: banya_db_acquired >= banya_db_max
+    for: 1m
+    labels: {severity: warning}
+    annotations: {summary: "Пул PostgreSQL полностью занят"}
+  - alert: BanyaHTTPServerErrors
+    expr: sum by(instance)(rate(banya_http_responses_total{class="5xx"}[5m])) / clamp_min(sum by(instance)(rate(banya_http_responses_total[5m])),0.01) > 0.01
+    for: 5m
+    labels: {severity: warning}
+    annotations: {summary: "Более 1 процента HTTP-ответов имеют статус 5xx"}
+  - alert: BanyaHTTPSlow
+    expr: histogram_quantile(0.99, sum by(instance,le)(rate(banya_http_duration_seconds_bucket[5m]))) > 5
+    for: 5m
+    labels: {severity: warning}
+    annotations: {summary: "p99 HTTP превышает пять секунд"}

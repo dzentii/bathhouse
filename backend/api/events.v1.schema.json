@@ -1,0 +1,488 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:banya:events:v1",
+  "title": "Banya Kafka event envelope v1",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "version",
+    "aggregate_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "const": 1
+    },
+    "aggregate_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "data": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "order.held"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "order_id",
+              "expires_at"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "order.released",
+              "order.expired"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "order_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "order.confirmed"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "payment_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "order_id",
+              "payment_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "payment.result"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "payment_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "order_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "amount_kopecks": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "currency": {
+                "const": "RUB"
+              },
+              "outcome": {
+                "enum": [
+                  "success",
+                  "declined"
+                ]
+              }
+            },
+            "required": [
+              "payment_id",
+              "order_id",
+              "amount_kopecks",
+              "currency",
+              "outcome"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "booking.payment_processed"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "payment_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "order_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "status": {
+                "enum": [
+                  "accepted",
+                  "declined",
+                  "rejected"
+                ]
+              }
+            },
+            "required": [
+              "payment_id",
+              "order_id",
+              "status"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "department.changed"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "department_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "department_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "resource.blocked",
+              "resource.unblocked",
+              "resource.block_updated"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "department_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "block_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "department_id",
+              "block_id"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "order.updated"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "order_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "order_id",
+              "version"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "catalog.department.updated"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "bath_id": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "bath_name": {
+                "type": "string"
+              },
+              "bath_address": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "session",
+                  "sauna",
+                  "info"
+                ]
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "setup": {
+                "type": "object",
+                "properties": {
+                  "base_guests": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "max_guests": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "min_duration_minutes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "duration_step_minutes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "start_step_minutes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "buffer_minutes": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "schedule": {
+                    "type": "object"
+                  },
+                  "tariffs": {
+                    "type": "object"
+                  },
+                  "resources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "x": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000
+                        },
+                        "y": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "label",
+                        "x",
+                        "y"
+                      ]
+                    },
+                    "minItems": 1,
+                    "maxItems": 500
+                  }
+                },
+                "required": [
+                  "base_guests",
+                  "max_guests",
+                  "min_duration_minutes",
+                  "duration_step_minutes",
+                  "start_step_minutes",
+                  "buffer_minutes",
+                  "schedule",
+                  "tariffs",
+                  "resources"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "bath_id",
+              "bath_name",
+              "bath_address",
+              "name",
+              "mode",
+              "active",
+              "version"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "enum": [
+              "booking.catalog_applied"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "department_id": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "error": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "department_id",
+              "version"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

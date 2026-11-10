@@ -1,0 +1,12 @@
+ALTER TABLE admins ADD COLUMN role text NOT NULL DEFAULT 'admin' CHECK(role IN ('owner','admin'));
+ALTER TABLE admins ADD COLUMN active boolean NOT NULL DEFAULT true;
+ALTER TABLE admins ADD COLUMN display_name text NOT NULL DEFAULT '';
+ALTER TABLE admins ADD COLUMN version bigint NOT NULL DEFAULT 1;
+UPDATE admins SET display_name=username;
+UPDATE admins SET role='owner' WHERE id=(SELECT id FROM admins ORDER BY created_at,id LIMIT 1);
+CREATE UNIQUE INDEX admins_username_lower_idx ON admins(lower(username));
+ALTER TABLE sessions ADD COLUMN id uuid NOT NULL DEFAULT gen_random_uuid();
+ALTER TABLE sessions ADD COLUMN user_agent text NOT NULL DEFAULT '';
+CREATE UNIQUE INDEX sessions_id_idx ON sessions(id);
+CREATE INDEX sessions_admin_idx ON sessions(admin_id,expires_at);
+CREATE TABLE employee_audit(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,actor_id uuid NOT NULL,employee_id uuid NOT NULL,action text NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp());

@@ -1,0 +1,14 @@
+# Use with docker-compose.yml; requires DOMAIN, HTTPS PUBLIC_URL and COOKIE_SECURE=true.
+services:
+  gateway:
+    ports: !reset []
+  caddy:
+    image: caddy:2.10.2-alpine
+    environment: {DOMAIN: '${DOMAIN:?missing DOMAIN}'}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes: ['./deploy/Caddyfile:/etc/caddy/Caddyfile:ro', caddydata:/data, caddyconfig:/config]
+    depends_on: {gateway: {condition: service_healthy}}
+    restart: unless-stopped
+volumes:
+  caddydata:
+  caddyconfig:

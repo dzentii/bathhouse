@@ -1,0 +1,12 @@
+DROP INDEX inbox_retention_idx;
+DROP INDEX outbox_delivered_retention_idx;
+DROP INDEX orders_contacts_receipts_idx;
+DROP INDEX blocks_history_page_idx;
+DROP INDEX audit_department_history_idx;
+DROP INDEX orders_future_active_idx;
+DELETE FROM order_history WHERE source_event_id IS NOT NULL;
+ALTER TABLE order_history DROP COLUMN source_event_id;
+DROP INDEX orders_hold_client_idx;
+ALTER TABLE orders DROP COLUMN hold_client_key;
+DROP INDEX api_requests_order_idx;
+ALTER TABLE api_requests DROP COLUMN sensitive_until,DROP COLUMN order_id;
