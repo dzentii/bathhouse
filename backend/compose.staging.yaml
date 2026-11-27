@@ -1,0 +1,93 @@
+# Server overlay: docker-compose.yml + compose.production.yaml + this file.
+# Images are built in CI; do not build on the VPS.
+# Tuned and checked for two testers on 1 vCPU / 2 GiB; see ../README.md.
+services:
+  catalog:
+    image: ${IMAGE_PREFIX:?missing IMAGE_PREFIX}/catalog:${IMAGE_TAG:?missing IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  booking:
+    image: ${IMAGE_PREFIX}/booking:${IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  payment:
+    image: ${IMAGE_PREFIX}/payment:${IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  identity:
+    image: ${IMAGE_PREFIX}/identity:${IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  postgres:
+    mem_limit: 384m
+    cpus: 1.0
+    command: [postgres, -c, shared_buffers=64MB, -c, max_connections=64, -c, work_mem=2MB]
+  redis:
+    mem_limit: 128m
+    cpus: 0.5
+    # Rate-limit counters must not be evicted to make room for cache entries.
+    command: [redis-server, --requirepass, '${REDIS_PASSWORD}', --appendonly, 'yes', --maxmemory, 48mb, --maxmemory-policy, noeviction, --auto-aof-rewrite-min-size, 32mb]
+  kafka:
+    mem_limit: 640m
+    cpus: 1.5
+    environment:
+      KAFKA_HEAP_OPTS: -Xmx256m -Xms128m
+      KAFKA_NUM_NETWORK_THREADS: 2
+      KAFKA_NUM_IO_THREADS: 2
+      KAFKA_BACKGROUND_THREADS: 2
+      KAFKA_LOG_RETENTION_HOURS: 72
+      KAFKA_LOG_RETENTION_BYTES: 134217728
+      KAFKA_LOG_SEGMENT_BYTES: 33554432
+    healthcheck:
+      test: [CMD-SHELL, "KAFKA_HEAP_OPTS='-Xmx96m -Xms32m' /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+  kafka-init:
+    mem_limit: 256m
+    environment:
+      KAFKA_HEAP_OPTS: -Xmx128m -Xms32m
+  migrate-catalog:
+    image: ${IMAGE_PREFIX}/catalog:${IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  migrate-booking:
+    image: ${IMAGE_PREFIX}/booking:${IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  migrate-payment:
+    image: ${IMAGE_PREFIX}/payment:${IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  migrate-identity:
+    image: ${IMAGE_PREFIX}/identity:${IMAGE_TAG}
+    mem_limit: 128m
+    environment: {GOMEMLIMIT: 96MiB}
+  gateway:
+    mem_limit: 64m
+    cpus: 0.5
+  swagger:
+    mem_limit: 96m
+    cpus: 0.5
+  backup:
+    # Dumps must be readable by the deploy account, not owned by container root.
+    user: '${DEPLOY_UID:-1000}:${DEPLOY_GID:-1000}'
+    mem_limit: 128m
+  caddy:
+    mem_limit: 96m
+    cpus: 0.5
+    environment: {GOMAXPROCS: '1', GOMEMLIMIT: 64MiB}
+    volumes:
+      - ./deploy/Caddyfile.staging:/etc/caddy/Caddyfile:ro
+    depends_on:
+      frontend: {condition: service_healthy}
+  frontend:
+    image: ${IMAGE_PREFIX}/frontend:${IMAGE_TAG}
+    restart: unless-stopped
+    mem_limit: 64m
+    cpus: 0.5
+    logging:
+      driver: local
+      options: {max-size: '10m', max-file: '3', compress: 'true'}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
+      interval: 5s
+      timeout: 3s
+      retries: 10

@@ -77,7 +77,7 @@ func newSuite(t *testing.T) *suite {
 	if os.Getenv("BANYA_INTEGRATION") != "1" {
 		t.Skip("set BANYA_INTEGRATION=1 after starting Compose with compose.local.yaml")
 	}
-	b, e := os.ReadFile(filepath.Join("..", "..", ".env"))
+	b, e := os.ReadFile(platform.Env("BANYA_TEST_ENV_FILE", filepath.Join("..", "..", ".env")))
 	require.NoError(t, e)
 	env := map[string]string{}
 	for _, line := range strings.Split(string(b), "\n") {
@@ -92,14 +92,14 @@ func newSuite(t *testing.T) *suite {
 		s.base = v
 	}
 	ctx := context.Background()
-	s.db, e = pgxpool.New(ctx, "postgres://booking:"+env["BOOKING_DB_PASSWORD"]+"@localhost:55432/booking?sslmode=disable")
+	s.db, e = pgxpool.New(ctx, "postgres://booking:"+env["BOOKING_DB_PASSWORD"]+"@"+platform.Env("BANYA_TEST_POSTGRES_ADDR", "localhost:55432")+"/booking?sslmode=disable")
 	require.NoError(t, e)
 	require.NoError(t, s.db.Ping(ctx))
 	t.Cleanup(s.db.Close)
-	s.pay, e = pgxpool.New(ctx, "postgres://payment:"+env["PAYMENT_DB_PASSWORD"]+"@localhost:55432/payment?sslmode=disable")
+	s.pay, e = pgxpool.New(ctx, "postgres://payment:"+env["PAYMENT_DB_PASSWORD"]+"@"+platform.Env("BANYA_TEST_POSTGRES_ADDR", "localhost:55432")+"/payment?sslmode=disable")
 	require.NoError(t, e)
 	t.Cleanup(s.pay.Close)
-	s.redis = redis.NewClient(&redis.Options{Addr: "localhost:56379", Password: env["REDIS_PASSWORD"]})
+	s.redis = redis.NewClient(&redis.Options{Addr: platform.Env("BANYA_TEST_REDIS_ADDR", "localhost:56379"), Password: env["REDIS_PASSWORD"]})
 	t.Cleanup(func() { _ = s.redis.Close() })
 	require.NoError(t, s.db.QueryRow(ctx, "SELECT clock_timestamp()").Scan(&s.now))
 	return s
@@ -534,7 +534,7 @@ func mustJSON(v any) json.RawMessage {
 }
 func (s *suite) publish(e platform.Event) {
 	s.t.Helper()
-	w := &kafka.Writer{Addr: kafka.TCP("localhost:19092"), Topic: "banya.events.v1", RequiredAcks: kafka.RequireAll}
+	w := &kafka.Writer{Addr: kafka.TCP(platform.Env("BANYA_TEST_KAFKA_ADDR", "localhost:19092")), Topic: "banya.events.v1", RequiredAcks: kafka.RequireAll}
 	defer func() { _ = w.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

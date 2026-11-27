@@ -1,0 +1,183 @@
+name: CI and staging deployment
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: banya-${{ github.workflow }}-${{ github.ref }}
+  # Never interrupt a deployment between checkpoint and migration.
+  cancel-in-progress: false
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=2
+      BANYA_INTEGRATION: '0'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: go build ./...
+      - run: go test -count=1 -race ./...
+      - run: go vet ./...
+      - name: Deployment scripts syntax
+        run: |
+          bash -n deploy/release.sh deploy/smoke.sh deploy/backup-staging.sh
+          python3 -m py_compile deploy/init-staging.py
+      - name: Deployment failure handling
+        run: python3 -m unittest discover -s deploy -p 'test_*.py' -v
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24.13.1'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run build -- --configuration production
+        env:
+          NG_BUILD_MAX_WORKERS: '2'
+          NODE_OPTIONS: --max-old-space-size=2048
+
+  integration:
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=2
+      COMPOSE_FILE: docker-compose.yml:compose.local.yaml
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - run: python3 scripts/init-env.py
+      - name: Validate server Compose overlay
+        env:
+          IMAGE_PREFIX: ghcr.io/example/banya
+          IMAGE_TAG: ci
+        run: docker compose -f docker-compose.yml -f compose.production.yaml -f compose.staging.yaml config --quiet
+      - run: docker compose build catalog booking payment identity
+      - run: docker compose up -d --no-build --wait --wait-timeout 240
+      - run: go test -count=1 -race -timeout 10m -v ./tests/integration
+        env: {BANYA_INTEGRATION: '1'}
+      - name: Service status on failure
+        if: failure()
+        run: docker compose ps -a
+      - name: Remove disposable CI environment
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+  publish:
+    needs: integration
+    if: vars.STAGING_DEPLOY_ENABLED == 'true' && github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      prefix: ${{ steps.names.outputs.prefix }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - id: names
+        env: {REPOSITORY: '${{ github.repository }}'}
+        run: echo "prefix=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+      - name: Build and push commit images
+        env:
+          IMAGE_PREFIX: ${{ steps.names.outputs.prefix }}
+          COMMIT: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          for service in catalog booking payment identity; do
+            docker build --pull --build-arg "SERVICE=$service" \
+              --label com.banya.project=banya-web \
+              --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" \
+              --label "org.opencontainers.image.revision=$COMMIT" \
+              -t "$IMAGE_PREFIX/$service:$COMMIT" backend
+            docker push "$IMAGE_PREFIX/$service:$COMMIT"
+          done
+          docker build --pull -f backend/deploy/frontend.Dockerfile \
+            --label com.banya.project=banya-web \
+            --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" \
+            --label "org.opencontainers.image.revision=$COMMIT" \
+            -t "$IMAGE_PREFIX/frontend:$COMMIT" .
+          docker push "$IMAGE_PREFIX/frontend:$COMMIT"
+      - if: always()
+        run: docker logout ghcr.io
+
+  deploy:
+    needs: publish
+    if: vars.STAGING_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: staging
+    concurrency:
+      group: banya-staging-server
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with: {persist-credentials: false}
+      - name: Upload and activate release
+        env:
+          SSH_HOST: ${{ secrets.STAGING_HOST }}
+          SSH_USER: ${{ secrets.STAGING_USER }}
+          SSH_PORT: ${{ secrets.STAGING_PORT }}
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+          IMAGE_PREFIX: ${{ needs.publish.outputs.prefix }}
+          COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SSH_PORT=${SSH_PORT:-22}
+          [[ $SSH_HOST =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ $SSH_USER =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ $SSH_PORT =~ ^[0-9]{1,5}$ ]]
+          [[ -n $SSH_KEY && -n $KNOWN_HOSTS ]]
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/staging_key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          trap 'rm -f "$HOME/.ssh/staging_key"' EXIT
+          remote=(ssh -i "$HOME/.ssh/staging_key" -p "$SSH_PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=15 "$SSH_USER@$SSH_HOST")
+          tar -czf /tmp/banya-release.tar.gz \
+            backend/docker-compose.yml backend/compose.production.yaml backend/compose.staging.yaml backend/.env.example \
+            backend/deploy backend/api/openapi.yaml
+          "${remote[@]}" "mkdir -p /opt/banya/releases/$COMMIT && tar -xzf - -C /opt/banya/releases/$COMMIT" < /tmp/banya-release.tar.gz
+          "${remote[@]}" "bash /opt/banya/releases/$COMMIT/backend/deploy/release.sh '$COMMIT' '$IMAGE_PREFIX'"

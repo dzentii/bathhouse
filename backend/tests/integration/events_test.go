@@ -17,7 +17,7 @@ func TestDeadLetterQueue(t *testing.T) {
 	s := newSuite(t)
 	event := platform.Event{ID: uuid.NewString(), Type: "unsupported.future", Version: 99, AggregateID: uuid.NewString(), OccurredAt: time.Now(), Data: json.RawMessage(`{}`)}
 	s.publish(event)
-	r := kafka.NewReader(kafka.ReaderConfig{Brokers: []string{"localhost:19092"}, Topic: "banya.events.v1.dlq", GroupID: "integration-dlq-" + uuid.NewString(), StartOffset: kafka.FirstOffset, MinBytes: 1, MaxBytes: 1 << 20})
+	r := kafka.NewReader(kafka.ReaderConfig{Brokers: []string{platform.Env("BANYA_TEST_KAFKA_ADDR", "localhost:19092")}, Topic: "banya.events.v1.dlq", GroupID: "integration-dlq-" + uuid.NewString(), StartOffset: kafka.FirstOffset, MinBytes: 1, MaxBytes: 1 << 20})
 	defer func() { _ = r.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

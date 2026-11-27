@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Сандуновские бани — backend MVP
-  version: 1.3.2
+  version: 1.4.0
   description: 'Только тестовая оплата, без фискализации и разрешения на фактический проход. Часовой пояс Asia/Yekaterinburg;
     суммы в копейках RUB. Все интервалы [начало, окончание). Администрирование бань и отделений, сотрудники (owner/admin),
     история, предпросмотры, PDF. Все PATCH требуют version и хотя бы одно изменение; при конфликте версии — 409.
@@ -2567,11 +2567,11 @@ paths:
               $ref: '#/components/schemas/BlockInput'
   /api/v1/admin/resource-blocks/{blockID}:
     delete:
-      summary: Снять блокировку с проверкой версии
+      summary: Снять всю запись блокировки с проверкой версии
       operationId: delete__api_v1_admin_resource_blocks_blockID
       tags:
       - Администрирование
-      description: ''
+      description: Снимает всю запись целиком — все resource_ids на весь её период. Для адресного снятия используйте POST /api/v1/admin/resource-blocks/{blockID}/release.
       responses:
         '200':
           description: Успешный результат или безопасный повтор
@@ -6171,6 +6171,115 @@ paths:
             schema:
               $ref: '#/components/schemas/SyncRetry'
       operationId: post__api_v1_admin_departments_departmentID_sync_retry
+  /api/v1/admin/resource-blocks/{blockID}/release:
+    post:
+      summary: Снять блокировку только с выбранных ресурсов и интервала
+      operationId: post__api_v1_admin_resource_blocks_blockID_release
+      tags:
+      - Администрирование
+      description: Атомарное вычитание интервала [starts_at, ends_at) для явно выбранных resource_ids. Оба времени
+        обязательны, точность до микросекунд; период целиком внутри исходной записи, все ресурсы входят в неё.
+        Исходная запись становится inactive с version+1. Нетронутые места и время сохраняются в remaining (0–3
+        новые записи с новыми ID и version=1). Ничего вне выбранной области не освобождается. Повтор с тем же
+        X-Idempotency-Key возвращает исходный результат без повторного разделения. После операции перечитайте
+        список блокировок и доступность. При конкурентном изменении версии — 409; чужой ресурс или расширение
+        интервала — 400.
+      responses:
+        '400':
+          description: Ошибка ввода
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Требуется действующий доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Недостаточно прав или неверный CSRF
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Ресурс отсутствует либо недоступен владельцу
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Конфликт ресурса, состояния, цены, версии или ключа повтора
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Превышен лимит запросов или активных удержаний; учитывайте Retry-After
+          headers:
+            Retry-After:
+              description: Рекомендуемая задержка повтора в секундах, если задана
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Сервис, лимитер или бюджет тяжёлых запросов временно недоступен
+          headers:
+            Retry-After:
+              description: Рекомендуемая задержка повтора в секундах, если задана
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '200':
+          description: Блокировка снята в выбранной области; повтор возвращает тот же снимок результата
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockReleaseResult'
+      security:
+      - adminBearer: []
+      - adminCookie: []
+      parameters:
+      - name: blockID
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-CSRF-Token
+        in: header
+        required: false
+        schema:
+          type: string
+        description: Обязателен для изменяющих запросов при cookie-аутентификации; при bearer не требуется.
+      - name: X-Idempotency-Key
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Случайный UUID v4 для POST/PUT/PATCH. Для повтора используйте тот же метод, URL и точное
+          JSON-тело. Изменение операции при прежнем ключе — 409. Снимок успешного ответа хранится 24 часа (вход
+          — до 8 часов); текущее состояние получают GET. Idempotency-Key поддерживается как устаревший псевдоним.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockReleaseInput'
 components:
   securitySchemes:
     orderToken:
@@ -8370,4 +8479,49 @@ components:
       required:
       - version
       - reason
+      additionalProperties: false
+
+    BlockReleaseInput:
+      type: object
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        resource_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 100
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+      required:
+      - version
+      - resource_ids
+      - starts_at
+      - ends_at
+      additionalProperties: false
+    BlockReleaseResult:
+      type: object
+      properties:
+        original:
+          $ref: '#/components/schemas/Block'
+        remaining:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/Block'
+        released:
+          $ref: '#/components/schemas/BlockReleaseInput'
+      required:
+      - original
+      - remaining
+      - released
       additionalProperties: false

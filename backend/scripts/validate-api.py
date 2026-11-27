@@ -2,6 +2,7 @@
 """Check all public OpenAPI operations against real HTTP responses on a local MVP."""
 import datetime as dt
 import json
+import os
 import time
 import urllib.error
 import urllib.parse
@@ -18,10 +19,10 @@ from jsonschema import Draft202012Validator, RefResolver
 from jsonschema.exceptions import ValidationError
 
 root = Path(__file__).resolve().parents[1]
-env = dict(line.split('=', 1) for line in (root / '.env').read_text().splitlines() if '=' in line)
+env = dict(line.split('=', 1) for line in Path(os.environ.get('BANYA_TEST_ENV_FILE', str(root / '.env'))).read_text().splitlines() if '=' in line)
 if env.get('APP_ENV') != 'development':
     raise SystemExit('HTTP checks create synthetic orders and are restricted to development')
-base = 'http://localhost:' + env.get('HTTP_PORT', '8080')
+base = os.environ.get('BANYA_TEST_URL', 'http://localhost:' + env.get('HTTP_PORT', '8080'))
 spec = yaml.safe_load((root / 'api/openapi.yaml').read_text())
 validate_spec(spec)
 resolver = RefResolver.from_schema(spec)
@@ -179,6 +180,8 @@ call('GET', '/api/v1/admin/resource-blocks?department_id=b1-male-general', '/api
 block = call('POST', '/api/v1/admin/resource-blocks', body={'department_id': block_selection['department_id'], 'resource_ids': block_selection['resource_ids'], 'starts_at': block_selection['starts_at'], 'ends_at': block_selection['ends_at'], 'reason': 'Синтетическая проверка API'}, token=admin, want=201)
 block = call('PATCH', f'/api/v1/admin/resource-blocks/{block["id"]}', '/api/v1/admin/resource-blocks/{blockID}', body={'version': block['version'], 'reason': 'Исправленная причина'}, token=admin)
 call('DELETE', f'/api/v1/admin/resource-blocks/{block["id"]}?version={block["version"]}', '/api/v1/admin/resource-blocks/{blockID}', token=admin)
+release_block = call('POST', '/api/v1/admin/resource-blocks', body={'department_id': block_selection['department_id'], 'resource_ids': block_selection['resource_ids'], 'starts_at': block_selection['starts_at'], 'ends_at': block_selection['ends_at'], 'reason': 'Адресное снятие API'}, token=admin, want=201)
+call('POST', f'/api/v1/admin/resource-blocks/{release_block["id"]}/release', '/api/v1/admin/resource-blocks/{blockID}/release', body={'version': release_block['version'], 'resource_ids': release_block['resource_ids'], 'starts_at': release_block['starts_at'], 'ends_at': release_block['ends_at']}, token=admin)
 info_path = '/api/v1/admin/departments/b2-shower-large/info'
 info_template = '/api/v1/admin/departments/{departmentID}/info'
 info = call('GET', info_path, info_template, token=admin)
@@ -238,7 +241,7 @@ missing = required - covered
 if missing:
     raise SystemExit('Operations not checked: ' + ', '.join(f'{method.upper()} {path}' for method, path in sorted(missing)))
 report = {'operations': len(covered), 'requests': len(results), 'rate_limited_retries': rate_limited_retries, 'results': results}
-target = root / 'tmp/api-verification.json'
+target = Path(os.environ.get('BANYA_TEST_REPORT_FILE', str(root / 'tmp/api-verification.json')))
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text(json.dumps(report, ensure_ascii=False, indent=2))
 print(f'Validated {len(covered)}/{len(required)} OpenAPI operations; {len(results)} real HTTP responses match their schemas.')

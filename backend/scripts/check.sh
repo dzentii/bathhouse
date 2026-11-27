@@ -1,5 +1,5 @@
 #!/bin/sh
-# Run from backend/. Install pinned tools as documented in README.md first.
+# Run from backend/. Install pinned tools as documented in ../README.md first.
 set -eu
 export GOMAXPROCS="${GOMAXPROCS:-2}"
 export GOFLAGS="${GOFLAGS:--p=1}"

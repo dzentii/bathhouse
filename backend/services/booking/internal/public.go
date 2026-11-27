@@ -55,6 +55,7 @@ func (s *Service) Routes(r chi.Router) {
 		r.Get("/api/v1/admin/resource-blocks", s.listBlocks)
 		r.Post("/api/v1/admin/resource-blocks", s.block)
 		r.Delete("/api/v1/admin/resource-blocks/{blockID}", s.unblock)
+		r.Post("/api/v1/admin/resource-blocks/{blockID}/release", s.releaseBlock)
 		r.Get("/api/v1/admin/audit", s.auditList)
 		r.Get("/api/v1/admin/orders/{orderID}/history", s.orderHistory)
 		r.Get("/api/v1/admin/departments/{departmentID}/history", s.departmentHistory)
